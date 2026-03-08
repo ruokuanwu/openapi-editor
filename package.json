@@ -1,7 +1,7 @@
 {
   "name": "openapi-editor",
-  "displayName": "openapi-editor",
-  "description": "editor for openapi",
+  "displayName": "OpenAPI Editor",
+  "description": "A visual editor for OpenAPI JSON files, similar to Apifox",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.109.0"
@@ -9,32 +9,71 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCustomEditor:openapi-editor.editor"
+  ],
   "main": "./out/extension.js",
   "contributes": {
+    "customEditors": [
+      {
+        "viewType": "openapi-editor.editor",
+        "displayName": "OpenAPI Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.json"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
     "commands": [
       {
-        "command": "openapi-editor.helloWorld",
-        "title": "Hello World"
+        "command": "openapi-editor.openEditor",
+        "title": "Open with OpenAPI Editor",
+        "category": "OpenAPI Editor"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "openapi-editor.openEditor",
+          "when": "resourceExtname == .json",
+          "group": "navigation@99"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "openapi-editor.openEditor",
+          "when": "resourceExtname == .json",
+          "group": "navigation@99"
+        }
+      ]
+    }
   },
   "scripts": {
-    "vscode:prepublish": "pnpm run compile",
+    "vscode:prepublish": "pnpm run build:all",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "build:webview": "cd webview-ui && pnpm run build",
+    "build:all": "pnpm run build:webview && pnpm run compile",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.109.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.56.1",
+    "@types/vscode": "^1.109.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.39.3",
     "typescript": "^5.9.3",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "element-plus": "^2.13.5",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.29"
   }
 }
