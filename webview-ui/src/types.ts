@@ -186,6 +186,23 @@ export interface RequestHistoryItem {
     status?: number;
 }
 
+// ─── Run Instance ────────────────────────────────────────────────────────────
+
+export interface RunInstanceParam {
+    name: string;
+    in: ParameterIn;
+    required: boolean;
+    description: string;
+    value: string;
+    isCustom: boolean;
+}
+
+export interface RunInstanceBody {
+    contentType: string;
+    textContent: string;
+    formContent: Record<string, string>;
+}
+
 // ─── Run / Debug ────────────────────────────────────────────────────────────
 
 export interface RunRequest {

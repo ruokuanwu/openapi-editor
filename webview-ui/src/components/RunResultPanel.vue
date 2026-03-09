@@ -2,8 +2,7 @@
     <div class="run-result-panel">
         <!-- Panel Header -->
         <div class="rp-header">
-            <span class="rp-title">运行结果</span>
-            <el-button :icon="Close" size="small" text @click="runStore.close()" />
+            <span class="rp-title">响应结果</span>
         </div>
 
         <!-- Loading skeleton -->
@@ -90,14 +89,13 @@
 
         <!-- Empty state (panel open but no run yet) -->
         <div v-else class="rp-empty">
-            <el-empty description="点击「运行」发送请求" :image-size="60" />
+            <el-empty description="点击「发送」发送请求" :image-size="60" />
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Close } from '@element-plus/icons-vue';
 import { useRunStore } from '../store/useRunStore';
 
 const runStore = useRunStore();

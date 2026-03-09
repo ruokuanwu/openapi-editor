@@ -14,7 +14,7 @@
                         <el-empty description="正在加载..." :image-size="80" />
                     </div>
                 </div>
-                <RunResultPanel v-if="runStore.isOpen && docStore.selectedPath" class="run-pane" />
+
             </main>
         </div>
         <SettingsPanel v-model:visible="showSettings" />
@@ -31,7 +31,6 @@ import Toolbar from './components/Toolbar.vue';
 import Sidebar from './components/Sidebar.vue';
 import EndpointEditor from './components/EndpointEditor.vue';
 import ComponentEditor from './components/ComponentEditor.vue';
-import RunResultPanel from './components/RunResultPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import type { ExtToWebviewMessage } from './types';
 
@@ -138,12 +137,6 @@ body {
     min-width: 0;
     display: flex;
     flex-direction: column;
-}
-
-.run-pane {
-    width: 400px;
-    flex-shrink: 0;
-    overflow-y: auto;
 }
 
 .app-empty {
