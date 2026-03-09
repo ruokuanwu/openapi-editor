@@ -5,8 +5,14 @@ import type {
     HttpMethod,
     OperationObject,
     TagObject,
+    SchemaObject,
+    ResponseObject,
+    ParameterObject,
+    RequestBodyObject,
 } from '../types';
 import { HTTP_METHODS } from '../types';
+
+export type ComponentType = 'schemas' | 'responses' | 'parameters' | 'requestBodies';
 
 export interface EndpointItem {
     path: string;
@@ -26,6 +32,8 @@ export const useDocStore = defineStore('doc', () => {
     const doc = ref<OpenApiDoc | null>(null);
     const selectedPath = ref<string | null>(null);
     const selectedMethod = ref<HttpMethod | null>(null);
+    const selectedComponentType = ref<ComponentType | null>(null);
+    const selectedComponentName = ref<string | null>(null);
 
     // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -99,6 +107,18 @@ export const useDocStore = defineStore('doc', () => {
         return (doc.value?.tags ?? []).map((t) => t.name);
     });
 
+    const allSchemaNames = computed((): string[] => {
+        return Object.keys(doc.value?.components?.schemas ?? {});
+    });
+
+    const selectedComponent = computed(() => {
+        if (!doc.value?.components || !selectedComponentType.value || !selectedComponentName.value) {
+            return null;
+        }
+        const section = doc.value.components[selectedComponentType.value] as Record<string, unknown> | undefined;
+        return section?.[selectedComponentName.value] ?? null;
+    });
+
     // ── Actions ───────────────────────────────────────────────────────────────
 
     function setDoc(newDoc: OpenApiDoc) {
@@ -108,9 +128,20 @@ export const useDocStore = defineStore('doc', () => {
     function selectEndpoint(path: string, method: HttpMethod) {
         selectedPath.value = path;
         selectedMethod.value = method;
+        selectedComponentType.value = null;
+        selectedComponentName.value = null;
     }
 
     function clearSelection() {
+        selectedPath.value = null;
+        selectedMethod.value = null;
+        selectedComponentType.value = null;
+        selectedComponentName.value = null;
+    }
+
+    function selectComponent(type: ComponentType, name: string) {
+        selectedComponentType.value = type;
+        selectedComponentName.value = name;
         selectedPath.value = null;
         selectedMethod.value = null;
     }
@@ -190,16 +221,81 @@ export const useDocStore = defineStore('doc', () => {
         doc.value.tags = doc.value.tags.filter((t) => t.name !== name);
     }
 
+    // ── Component CRUD ───────────────────────────────────────────────────────
+
+    type ComponentValueMap = {
+        schemas: SchemaObject;
+        responses: ResponseObject;
+        parameters: ParameterObject;
+        requestBodies: RequestBodyObject;
+    };
+
+    function ensureComponents() {
+        if (!doc.value) { return; }
+        if (!doc.value.components) { doc.value.components = {}; }
+    }
+
+    function addComponent<T extends ComponentType>(type: T, name: string, value: ComponentValueMap[T]) {
+        if (!doc.value) { return; }
+        ensureComponents();
+        if (!doc.value.components![type]) { (doc.value.components as Record<string, unknown>)[type] = {}; }
+        (doc.value.components![type] as Record<string, unknown>)[name] = value;
+        selectComponent(type, name);
+    }
+
+    function removeComponent(type: ComponentType, name: string) {
+        if (!doc.value?.components?.[type]) { return; }
+        delete (doc.value.components[type] as Record<string, unknown>)[name];
+        if (selectedComponentType.value === type && selectedComponentName.value === name) {
+            selectedComponentType.value = null;
+            selectedComponentName.value = null;
+        }
+    }
+
+    function updateComponent(type: ComponentType, name: string, value: unknown) {
+        if (!doc.value?.components?.[type]) { return; }
+        (doc.value.components[type] as Record<string, unknown>)[name] = value;
+    }
+
+    function renameComponent(type: ComponentType, oldName: string, newName: string) {
+        if (!doc.value?.components?.[type]) { return; }
+        if (!newName || newName === oldName) { return; }
+        const section = doc.value.components[type] as Record<string, unknown>;
+        if (!section[oldName]) { return; }
+        // Move the value
+        section[newName] = section[oldName];
+        delete section[oldName];
+        // Update all $ref strings across the document
+        const oldRef = `#/components/${type}/${oldName}`;
+        const newRef = `#/components/${type}/${newName}`;
+        const docStr = JSON.stringify(doc.value);
+        const updated = docStr.replaceAll(JSON.stringify(oldRef), JSON.stringify(newRef));
+        // Avoid full replacement if nothing changed
+        if (updated !== docStr) {
+            const newDoc = JSON.parse(updated) as OpenApiDoc;
+            doc.value = newDoc;
+        }
+        // Update selection
+        if (selectedComponentType.value === type && selectedComponentName.value === oldName) {
+            selectedComponentName.value = newName;
+        }
+    }
+
     return {
         doc,
         selectedPath,
         selectedMethod,
+        selectedComponentType,
+        selectedComponentName,
         endpointGroups,
         selectedOperation,
+        selectedComponent,
         allTags,
+        allSchemaNames,
         setDoc,
         selectEndpoint,
         clearSelection,
+        selectComponent,
         addEndpoint,
         removeEndpoint,
         renameEndpoint,
@@ -207,5 +303,9 @@ export const useDocStore = defineStore('doc', () => {
         updateInfo,
         addTag,
         removeTag,
+        addComponent,
+        removeComponent,
+        renameComponent,
+        updateComponent,
     };
 });

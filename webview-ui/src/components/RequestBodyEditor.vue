@@ -1,14 +1,14 @@
 <template>
     <div class="request-body-editor">
-        <template v-if="op">
+        <template v-if="op && requestBody">
             <!-- Required toggle -->
             <el-form-item label="必填" label-width="60px">
-                <el-switch v-model="requestBody.required" :active-value="true" :inactive-value="false" />
+                <el-switch v-model="requestBody!.required" :active-value="true" :inactive-value="false" />
             </el-form-item>
 
             <!-- Description -->
             <el-form-item label="描述" label-width="60px">
-                <el-input v-model="requestBody.description" placeholder="请求体说明" size="small" />
+                <el-input v-model="requestBody!.description" placeholder="请求体说明" size="small" />
             </el-form-item>
 
             <!-- Content-Type tabs -->
@@ -30,7 +30,19 @@
 
             <!-- Schema editor for active content type -->
             <div v-else-if="activeSchema" class="schema-section">
-                <div class="schema-section-title">Schema</div>
+                <div class="schema-section-header">
+                    <span class="schema-section-title">Schema</span>
+                    <div class="schema-section-actions">
+                        <el-tooltip :content="activeSchema.$ref ? '更换引用组件' : '引用组件'" placement="top" :show-after="500">
+                            <el-button size="small" text :icon="Link" @click="openRefPicker">
+                                {{ activeSchema.$ref ? '更换组件' : '引用组件' }}
+                            </el-button>
+                        </el-tooltip>
+                        <el-tooltip v-if="activeSchema.$ref" content="解除引用（内联展开）" placement="top" :show-after="500">
+                            <el-button size="small" text :icon="DocumentCopy" @click="derefActiveSchema" />
+                        </el-tooltip>
+                    </div>
+                </div>
                 <SchemaEditor :schema="activeSchema" />
             </div>
             <div v-else class="no-body">该 Content-Type 暂无 Schema</div>
@@ -52,12 +64,24 @@
                 <el-button type="primary" @click="confirmAddContentType">确定</el-button>
             </template>
         </el-dialog>
+
+        <!-- Ref Picker dialog -->
+        <el-dialog v-model="showRefPicker" title="选择引用组件" width="400px" :append-to-body="true">
+            <el-select v-model="pickedRef" filterable placeholder="搜索 Schema 名称" style="width: 100%">
+                <el-option v-for="name in docStore.allSchemaNames" :key="name"
+                    :label="name" :value="'#/components/schemas/' + name" />
+            </el-select>
+            <template #footer>
+                <el-button @click="showRefPicker = false">取消</el-button>
+                <el-button type="primary" @click="applyRefPick">确定</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Plus, Delete } from '@element-plus/icons-vue';
+import { Plus, Delete, Link, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
 import type { SchemaObject } from '../types';
@@ -117,6 +141,38 @@ function removeContentType() {
     delete requestBody.value.content[activeContentType.value];
     activeContentType.value = contentTypes.value[0] ?? '';
 }
+
+// ── Import component (ref picker) ────────────────────────────────────────────
+const showRefPicker = ref(false);
+const pickedRef = ref('');
+
+function openRefPicker() {
+    pickedRef.value = activeSchema.value?.$ref ?? '';
+    showRefPicker.value = true;
+}
+
+function applyRefPick() {
+    if (!pickedRef.value || !requestBody.value || !activeContentType.value) {
+        showRefPicker.value = false;
+        return;
+    }
+    const mediaType = requestBody.value.content[activeContentType.value];
+    if (!mediaType) { return; }
+    mediaType.schema = { $ref: pickedRef.value };
+    showRefPicker.value = false;
+}
+
+function derefActiveSchema() {
+    const schema = activeSchema.value;
+    if (!schema?.$ref) { return; }
+    const name = schema.$ref.match(/^#\/components\/schemas\/(.+)$/)?.[1];
+    if (!name) { return; }
+    const resolved = docStore.doc?.components?.schemas?.[name];
+    if (!resolved) { return; }
+    const copy = JSON.parse(JSON.stringify(resolved)) as SchemaObject;
+    const mediaType = requestBody.value?.content[activeContentType.value];
+    if (mediaType) { mediaType.schema = copy; }
+}
 </script>
 
 <style scoped>
@@ -137,6 +193,19 @@ function removeContentType() {
     margin-bottom: 8px;
     font-size: 12px;
     opacity: 0.8;
+}
+
+.schema-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.schema-section-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
 }
 
 .schema-section {

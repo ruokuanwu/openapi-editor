@@ -5,8 +5,9 @@
             <Sidebar />
             <main class="app-main">
                 <EndpointEditor v-if="docStore.selectedPath && docStore.selectedMethod" />
+                <ComponentEditor v-else-if="docStore.selectedComponentName" />
                 <div v-else-if="docStore.doc" class="app-empty">
-                    <el-empty description="从左侧选择一个接口开始编辑" :image-size="80" />
+                    <el-empty description="从左侧选择一个接口或组件开始编辑" :image-size="80" />
                 </div>
                 <div v-else class="app-empty">
                     <el-empty description="正在加载..." :image-size="80" />
@@ -25,6 +26,7 @@ import { useConfigStore } from './store/useConfigStore';
 import Toolbar from './components/Toolbar.vue';
 import Sidebar from './components/Sidebar.vue';
 import EndpointEditor from './components/EndpointEditor.vue';
+import ComponentEditor from './components/ComponentEditor.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import type { ExtToWebviewMessage } from './types';
 

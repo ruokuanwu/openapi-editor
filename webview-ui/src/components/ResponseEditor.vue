@@ -49,7 +49,25 @@
 
                         <div v-if="activeContentType[code] && responses[code].content![activeContentType[code]]"
                             class="schema-section">
-                            <div class="schema-section-title">Schema</div>
+                            <div class="schema-section-header">
+                                <div class="schema-section-title">Schema</div>
+                                <div class="schema-section-actions">
+                                    <el-tooltip
+                                        :content="responses[code].content![activeContentType[code]].schema?.$ref ? '更换引用组件' : '引用组件'"
+                                        placement="top" :show-after="500">
+                                        <el-button size="small" text :icon="Link"
+                                            @click="openRefPicker(code)">
+                                            {{ responses[code].content![activeContentType[code]].schema?.$ref ? '更换组件' : '引用组件' }}
+                                        </el-button>
+                                    </el-tooltip>
+                                    <el-tooltip
+                                        v-if="responses[code].content![activeContentType[code]].schema?.$ref"
+                                        content="解除引用（内联展开）" placement="top" :show-after="500">
+                                        <el-button size="small" text :icon="DocumentCopy"
+                                            @click="derefSchema(code)" />
+                                    </el-tooltip>
+                                </div>
+                            </div>
                             <SchemaEditor :schema="ensureSchema(responses[code].content![activeContentType[code]])" />
                         </div>
                     </div>
@@ -62,12 +80,24 @@
                 </div>
             </el-collapse-item>
         </el-collapse>
+
+        <!-- Ref Picker dialog -->
+        <el-dialog v-model="showRefPicker" title="选择引用组件" width="400px" :append-to-body="true">
+            <el-select v-model="pickedRef" filterable placeholder="搜索 Schema 名称" style="width: 100%">
+                <el-option v-for="name in docStore.allSchemaNames" :key="name"
+                    :label="name" :value="'#/components/schemas/' + name" />
+            </el-select>
+            <template #footer>
+                <el-button @click="showRefPicker = false">取消</el-button>
+                <el-button type="primary" @click="applyRefPick">确定</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { Plus, Delete } from '@element-plus/icons-vue';
+import { Plus, Delete, Link, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
 import type { SchemaObject, MediaTypeObject } from '../types';
@@ -141,6 +171,39 @@ function ensureSchema(mediaType: MediaTypeObject): SchemaObject {
     if (!mediaType.schema) { mediaType.schema = { type: 'object', properties: {} }; }
     return mediaType.schema;
 }
+
+// ── Import component (ref picker) ────────────────────────────────────────────
+const showRefPicker = ref(false);
+const pickedRef = ref('');
+const refPickerCode = ref('');
+
+function openRefPicker(code: string) {
+    refPickerCode.value = code;
+    const schema = responses.value[code]?.content?.[activeContentType[code]]?.schema;
+    pickedRef.value = schema?.$ref ?? '';
+    showRefPicker.value = true;
+}
+
+function applyRefPick() {
+    const code = refPickerCode.value;
+    if (!pickedRef.value || !code) { showRefPicker.value = false; return; }
+    const ct = activeContentType[code];
+    if (!ct || !responses.value[code]?.content?.[ct]) { showRefPicker.value = false; return; }
+    responses.value[code].content![ct].schema = { $ref: pickedRef.value };
+    showRefPicker.value = false;
+}
+
+function derefSchema(code: string) {
+    const ct = activeContentType[code];
+    if (!ct) { return; }
+    const schema = responses.value[code]?.content?.[ct]?.schema;
+    if (!schema?.$ref) { return; }
+    const name = schema.$ref.match(/^#\/components\/schemas\/(.+)$/)?.[1];
+    if (!name) { return; }
+    const resolved = docStore.doc?.components?.schemas?.[name];
+    if (!resolved) { return; }
+    responses.value[code].content![ct].schema = JSON.parse(JSON.stringify(resolved));
+}
 </script>
 
 <style scoped>
@@ -180,8 +243,20 @@ function ensureSchema(mediaType: MediaTypeObject): SchemaObject {
 
 .schema-section-title {
     font-weight: 600;
-    margin-bottom: 8px;
     font-size: 12px;
     opacity: 0.8;
+}
+
+.schema-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.schema-section-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
 }
 </style>
