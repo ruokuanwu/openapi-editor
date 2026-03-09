@@ -61,19 +61,15 @@ test: ## Compile then run extension tests
 # ── Packaging ────────────────────────────────────────────────────────────────
 
 .PHONY: package
-package: ## Package the extension into a .vsix file (requires vsce)
-	@echo "Building before packaging..."
-	$(PNPM) run build:all
-	@echo "Packaging with vsce..."
+package: rebuild ## Package the extension into a .vsix file (requires vsce)
 	$(VSCE) package --no-dependencies
 	@echo ""
 	@echo "  ✓ VSIX created:"
 	@ls -lh $(VSIX_GLOB) 2>/dev/null || echo "  (no .vsix found – check vsce output above)"
 
 .PHONY: publish
-publish: ## Publish to VS Code Marketplace (requires VSCE_PAT env var)
+publish: package ## Publish to VS Code Marketplace (requires VSCE_PAT env var)
 	@test -n "$$VSCE_PAT" || (echo "Error: VSCE_PAT is not set" && exit 1)
-	$(PNPM) run build:all
 	$(VSCE) publish --no-dependencies
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────

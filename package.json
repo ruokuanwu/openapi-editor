@@ -3,6 +3,10 @@
   "displayName": "OpenAPI Editor",
   "description": "A visual editor for OpenAPI JSON files, similar to Apifox",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruokuanwu/openapi-editor"
+  },
   "engines": {
     "vscode": "^1.109.0"
   },
