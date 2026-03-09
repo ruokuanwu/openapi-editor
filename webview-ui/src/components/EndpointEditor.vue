@@ -7,6 +7,26 @@
             </el-select>
             <el-input v-model="editPath" size="small" style="flex: 1" @blur="onPathBlur" @keydown.enter="onPathBlur" />
             <el-tag v-if="operation.deprecated" type="warning" size="small">已废弃</el-tag>
+
+            <!-- Run button -->
+            <el-button
+                size="small"
+                type="primary"
+                :icon="VideoPlay"
+                :loading="runStore.loading"
+                @click="doRun"
+            >运行</el-button>
+
+            <!-- Export split-button -->
+            <el-dropdown split-button size="small" @click="doExport('curl')" @command="doExport">
+                导出
+                <template #dropdown>
+                    <el-dropdown-menu>
+                        <el-dropdown-item command="curl">导出 cURL</el-dropdown-item>
+                        <el-dropdown-item command="openapi">导出 OpenAPI JSON</el-dropdown-item>
+                    </el-dropdown-menu>
+                </template>
+            </el-dropdown>
         </div>
 
         <!-- Tabs -->
@@ -40,16 +60,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, toRaw } from 'vue';
+import { VideoPlay } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import { useDocStore } from '../store/useDocStore';
+import { useConfigStore } from '../store/useConfigStore';
+import { useRunStore } from '../store/useRunStore';
 import { HTTP_METHODS } from '../types';
 import type { HttpMethod } from '../types';
+import { buildRunRequest } from '../utils/requestBuilder';
+import { buildCurl, buildOpenapiJson } from '../utils/exportUtils';
+import vscode from '../vscode';
 import EndpointMeta from './EndpointMeta.vue';
 import ParameterTable from './ParameterTable.vue';
 import RequestBodyEditor from './RequestBodyEditor.vue';
 import ResponseEditor from './ResponseEditor.vue';
 
 const docStore = useDocStore();
+const configStore = useConfigStore();
+const runStore = useRunStore();
 const activeTab = ref('overview');
 
 const operation = computed(() => docStore.selectedOperation);
@@ -63,6 +92,8 @@ watch(
     ([path, method]) => {
         editPath.value = path ?? '';
         editMethod.value = (method ?? 'get') as HttpMethod;
+        // Clear run result when switching endpoints
+        runStore.close();
     }
 );
 
@@ -85,6 +116,49 @@ function onPathBlur() {
     if (oldPath && method && oldPath !== newPath) {
         docStore.renameEndpoint(oldPath, method, newPath.startsWith('/') ? newPath : `/${newPath}`, method);
     }
+}
+
+async function doRun() {
+    const op = operation.value;
+    const path = docStore.selectedPath;
+    const method = docStore.selectedMethod;
+    const doc = docStore.doc;
+    if (!op || !path || !method || !doc) { return; }
+
+    const req = buildRunRequest(toRaw(op), path, configStore, toRaw(doc));
+    req.method = method.toUpperCase();
+
+    // Generate a unique request ID
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    // Register the pending request in the store before sending
+    runStore.expectResponse(id, req);
+    runStore.open();
+    runStore.setLoading(true);
+
+    // Proxy the HTTP request through the extension host (CSP doesn't allow direct fetch)
+    vscode.postMessage({ type: 'runRequest', id, method: req.method, url: req.url, headers: req.headers, body: req.body });
+}
+
+function doExport(type: 'curl' | 'openapi') {
+    const op = operation.value;
+    const path = docStore.selectedPath;
+    const method = docStore.selectedMethod;
+    const doc = docStore.doc;
+    if (!op || !path || !method || !doc) { return; }
+
+    let text: string;
+    if (type === 'openapi') {
+        text = buildOpenapiJson(path, method, toRaw(doc));
+    } else {
+        text = buildCurl(toRaw(op), path, method, configStore, toRaw(doc));
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+        ElMessage.success('已复制');
+    }).catch(() => {
+        ElMessage.error('复制失败，请手动复制');
+    });
 }
 </script>
 

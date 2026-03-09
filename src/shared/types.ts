@@ -185,9 +185,12 @@ export interface RequestHistoryItem {
 
 export type ExtToWebviewMessage =
     | { type: 'init'; doc: OpenApiDoc; config: EditorConfig }
-    | { type: 'docChanged'; doc: OpenApiDoc };
+    | { type: 'docChanged'; doc: OpenApiDoc }
+    | { type: 'runResponse'; id: string; status: number; statusText: string; headers: Record<string, string>; body: string; duration: number }
+    | { type: 'runError'; id: string; error: string };
 
 export type WebviewToExtMessage =
     | { type: 'ready' }
     | { type: 'save'; doc: OpenApiDoc }
-    | { type: 'updateConfig'; config: Partial<EditorConfig> };
+    | { type: 'updateConfig'; config: Partial<EditorConfig> }
+    | { type: 'runRequest'; id: string; method: string; url: string; headers: Record<string, string>; body?: string };

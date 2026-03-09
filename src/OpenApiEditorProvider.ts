@@ -83,6 +83,38 @@ export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
                 case 'updateConfig':
                     configManager.mergeConfig(document.uri, message.config);
                     break;
+
+                case 'runRequest': {
+                    const { id, method, url, headers, body } = message;
+                    const start = Date.now();
+                    (async () => {
+                        try {
+                            const init: RequestInit = { method, headers };
+                            if (body !== undefined) { init.body = body; }
+                            const res = await fetch(url, init);
+                            const duration = Date.now() - start;
+                            const resBody = await res.text();
+                            const resHeaders: Record<string, string> = {};
+                            res.headers.forEach((val: string, key: string) => { resHeaders[key] = val; });
+                            webview.postMessage({
+                                type: 'runResponse',
+                                id,
+                                status: res.status,
+                                statusText: res.statusText,
+                                headers: resHeaders,
+                                body: resBody,
+                                duration,
+                            });
+                        } catch (err) {
+                            webview.postMessage({
+                                type: 'runError',
+                                id,
+                                error: err instanceof Error ? err.message : String(err),
+                            });
+                        }
+                    })();
+                    break;
+                }
             }
         });
 

@@ -4,14 +4,17 @@
         <div class="app-body">
             <Sidebar />
             <main class="app-main">
-                <EndpointEditor v-if="docStore.selectedPath && docStore.selectedMethod" />
-                <ComponentEditor v-else-if="docStore.selectedComponentName" />
-                <div v-else-if="docStore.doc" class="app-empty">
-                    <el-empty description="从左侧选择一个接口或组件开始编辑" :image-size="80" />
+                <div class="editor-pane">
+                    <EndpointEditor v-if="docStore.selectedPath && docStore.selectedMethod" />
+                    <ComponentEditor v-else-if="docStore.selectedComponentName" />
+                    <div v-else-if="docStore.doc" class="app-empty">
+                        <el-empty description="从左侧选择一个接口或组件开始编辑" :image-size="80" />
+                    </div>
+                    <div v-else class="app-empty">
+                        <el-empty description="正在加载..." :image-size="80" />
+                    </div>
                 </div>
-                <div v-else class="app-empty">
-                    <el-empty description="正在加载..." :image-size="80" />
-                </div>
+                <RunResultPanel v-if="runStore.isOpen && docStore.selectedPath" class="run-pane" />
             </main>
         </div>
         <SettingsPanel v-model:visible="showSettings" />
@@ -23,15 +26,18 @@ import { ref, onMounted, watch, toRaw } from 'vue';
 import vscode from './vscode';
 import { useDocStore } from './store/useDocStore';
 import { useConfigStore } from './store/useConfigStore';
+import { useRunStore } from './store/useRunStore';
 import Toolbar from './components/Toolbar.vue';
 import Sidebar from './components/Sidebar.vue';
 import EndpointEditor from './components/EndpointEditor.vue';
 import ComponentEditor from './components/ComponentEditor.vue';
+import RunResultPanel from './components/RunResultPanel.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import type { ExtToWebviewMessage } from './types';
 
 const docStore = useDocStore();
 const configStore = useConfigStore();
+const runStore = useRunStore();
 const showSettings = ref(false);
 
 function applyTheme(theme: string | undefined) {
@@ -56,6 +62,10 @@ onMounted(() => {
             applyTheme(msg.config.theme);
         } else if (msg.type === 'docChanged') {
             docStore.setDoc(msg.doc);
+        } else if (msg.type === 'runResponse') {
+            runStore.handleResponse(msg);
+        } else if (msg.type === 'runError') {
+            runStore.handleError(msg.id, msg.error);
         }
     });
 
@@ -115,9 +125,25 @@ body {
 
 .app-main {
     flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    background: var(--vscode-editor-background, #fff);
+}
+
+.editor-pane {
+    flex: 1;
     overflow-y: auto;
     padding: 16px 20px;
-    background: var(--vscode-editor-background, #fff);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.run-pane {
+    width: 400px;
+    flex-shrink: 0;
+    overflow-y: auto;
 }
 
 .app-empty {
