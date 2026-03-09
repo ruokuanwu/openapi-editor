@@ -206,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, toRaw } from 'vue';
 import { Plus, Delete, Sunny, Moon } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useConfigStore } from '../store/useConfigStore';
@@ -282,7 +282,7 @@ function addMockRule() {
 
 // ── Persist ──────────────────────────────────────────────────────────────────
 function saveSettings() {
-    vscode.postMessage({ type: 'updateConfig', config: configStore.config });
+    vscode.postMessage({ type: 'updateConfig', config: toRaw(configStore.config) });
     ElMessage.success('设置已保存至 .openapi-editor');
     emit('update:visible', false);
 }

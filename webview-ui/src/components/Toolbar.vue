@@ -34,6 +34,7 @@ import { Check, Setting, Document } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import { useConfigStore } from '../store/useConfigStore';
 import vscode from '../vscode';
+import { ElMessage } from 'element-plus';
 
 const emit = defineEmits<{ (e: 'openSettings'): void }>();
 
@@ -51,10 +52,9 @@ const activeEnv = computed({
 });
 
 function save() {
-    console.log('Saving document...', docStore.doc);
-    console.log('Current configuration:', configStore.config);
     if (docStore.doc) {
         vscode.postMessage({ type: 'save', doc : toRaw(docStore.doc) });
+        ElMessage.success('已保存');
     }
 }
 </script>

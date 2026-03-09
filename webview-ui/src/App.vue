@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, toRaw } from 'vue';
 import vscode from './vscode';
 import { useDocStore } from './store/useDocStore';
 import { useConfigStore } from './store/useConfigStore';
@@ -62,7 +62,7 @@ onMounted(() => {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
             if (docStore.doc) {
-                vscode.postMessage({ type: 'save', doc: docStore.doc });
+                vscode.postMessage({ type: 'save', doc: toRaw(docStore.doc )});
             }
         }
     });
