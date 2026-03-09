@@ -1,39 +1,43 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
-import type { EditorConfig } from '../shared/types';
+import type { EditorConfig, Environment, AuthConfig, MockConfig, ThemeMode } from '../shared/types';
 
-const DEFAULT_CONFIG: EditorConfig = {
+const SECTION = 'openapi-editor';
+
+/** The subset of EditorConfig that lives in VS Code settings (excludes requestHistory). */
+export type SettingsConfig = Omit<EditorConfig, 'requestHistory'>;
+
+const DEFAULTS: SettingsConfig = {
     environments: [],
     auth: { type: 'none' },
     mock: { enabled: false, rules: [] },
-    requestHistory: [],
+    theme: 'light',
 };
 
-function getConfigPath(docUri: vscode.Uri): string {
-    const dir = path.dirname(docUri.fsPath);
-    return path.join(dir, '.openapi-editor');
+function getTarget(docUri: vscode.Uri): vscode.ConfigurationTarget {
+    return vscode.workspace.getWorkspaceFolder(docUri)
+        ? vscode.ConfigurationTarget.Workspace
+        : vscode.ConfigurationTarget.Global;
 }
 
 export const configManager = {
-    readConfig(docUri: vscode.Uri): EditorConfig {
-        const configPath = getConfigPath(docUri);
-        try {
-            const content = fs.readFileSync(configPath, 'utf-8');
-            return { ...DEFAULT_CONFIG, ...JSON.parse(content) };
-        } catch {
-            return { ...DEFAULT_CONFIG };
+    readConfig(docUri: vscode.Uri): SettingsConfig {
+        const cfg = vscode.workspace.getConfiguration(SECTION, docUri);
+        return {
+            environments: cfg.get<Environment[]>('environments', DEFAULTS.environments),
+            activeEnvironment: cfg.get<string | undefined>('activeEnvironment') ?? undefined,
+            auth: cfg.get<AuthConfig>('auth', DEFAULTS.auth),
+            mock: cfg.get<MockConfig>('mock', DEFAULTS.mock),
+            theme: cfg.get<ThemeMode>('theme', DEFAULTS.theme as ThemeMode),
+        };
+    },
+
+    async mergeConfig(docUri: vscode.Uri, partial: Partial<SettingsConfig>): Promise<void> {
+        const cfg = vscode.workspace.getConfiguration(SECTION, docUri);
+        const target = getTarget(docUri);
+        for (const [key, value] of Object.entries(partial)) {
+            if (value !== undefined) {
+                await cfg.update(key, value, target);
+            }
         }
-    },
-
-    writeConfig(docUri: vscode.Uri, config: EditorConfig): void {
-        const configPath = getConfigPath(docUri);
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-    },
-
-    mergeConfig(docUri: vscode.Uri, partial: Partial<EditorConfig>): void {
-        const current = this.readConfig(docUri);
-        const updated = { ...current, ...partial };
-        this.writeConfig(docUri, updated);
     },
 };

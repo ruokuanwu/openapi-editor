@@ -283,7 +283,7 @@ function addMockRule() {
 // ── Persist ──────────────────────────────────────────────────────────────────
 function saveSettings() {
     vscode.postMessage({ type: 'updateConfig', config: toRaw(configStore.config) });
-    ElMessage.success('设置已保存至 .openapi-editor');
+    ElMessage.success('设置已保存');
     emit('update:visible', false);
 }
 </script>

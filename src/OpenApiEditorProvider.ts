@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { configManager } from './utils/configManager';
-import type { WebviewToExtMessage, OpenApiDoc } from './shared/types';
+import type { WebviewToExtMessage, OpenApiDoc, RequestHistoryItem } from './shared/types';
+
+const REQUEST_HISTORY_KEY = 'openapi-editor.requestHistory';
 
 export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
     public static readonly viewType = 'openapi-editor.editor';
@@ -50,8 +52,9 @@ export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
                 vscode.window.showErrorMessage('OpenAPI Editor: 无法解析 JSON 文件，请检查文件格式。');
                 return;
             }
-            const config = configManager.readConfig(document.uri);
-            webview.postMessage({ type: 'init', doc, config });
+            const settingsConfig = configManager.readConfig(document.uri);
+            const requestHistory = this.context.workspaceState.get<RequestHistoryItem[]>(REQUEST_HISTORY_KEY, []);
+            webview.postMessage({ type: 'init', doc, config: { ...settingsConfig, requestHistory } });
         };
 
         // Handle messages from webview
@@ -80,9 +83,16 @@ export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
                     break;
                 }
 
-                case 'updateConfig':
-                    configManager.mergeConfig(document.uri, message.config);
+                case 'updateConfig': {
+                    const { requestHistory, ...settingsFields } = message.config;
+                    if (requestHistory !== undefined) {
+                        this.context.workspaceState.update(REQUEST_HISTORY_KEY, requestHistory);
+                    }
+                    if (Object.keys(settingsFields).length > 0) {
+                        configManager.mergeConfig(document.uri, settingsFields);
+                    }
                     break;
+                }
 
                 case 'runRequest': {
                     const { id, method, url, headers, body } = message;
@@ -118,6 +128,15 @@ export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
             }
         });
 
+        // Sync VS Code settings changes back to webview
+        const configChangeDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('openapi-editor', document.uri)) {
+                const settingsConfig = configManager.readConfig(document.uri);
+                const requestHistory = this.context.workspaceState.get<RequestHistoryItem[]>(REQUEST_HISTORY_KEY, []);
+                webview.postMessage({ type: 'configUpdated', config: { ...settingsConfig, requestHistory } });
+            }
+        });
+
         // Sync external document changes back to webview
         const changeDocDisposable = vscode.workspace.onDidChangeTextDocument((e) => {
             if (e.document.uri.toString() !== document.uri.toString()) {
@@ -139,6 +158,7 @@ export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.onDidDispose(() => {
             msgDisposable.dispose();
             changeDocDisposable.dispose();
+            configChangeDisposable.dispose();
         });
     }
 

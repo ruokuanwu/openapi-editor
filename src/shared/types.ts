@@ -129,12 +129,15 @@ export interface ServerObject {
 
 // ─── Editor Config Types ────────────────────────────────────────────────────
 
+export type ThemeMode = 'light' | 'dark';
+
 export interface EditorConfig {
     environments: Environment[];
     activeEnvironment?: string;
     auth: AuthConfig;
     mock: MockConfig;
     requestHistory: RequestHistoryItem[];
+    theme?: ThemeMode;
 }
 
 export interface Environment {
@@ -186,6 +189,7 @@ export interface RequestHistoryItem {
 export type ExtToWebviewMessage =
     | { type: 'init'; doc: OpenApiDoc; config: EditorConfig }
     | { type: 'docChanged'; doc: OpenApiDoc }
+    | { type: 'configUpdated'; config: EditorConfig }
     | { type: 'runResponse'; id: string; status: number; statusText: string; headers: Record<string, string>; body: string; duration: number }
     | { type: 'runError'; id: string; error: string };
 

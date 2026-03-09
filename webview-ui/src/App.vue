@@ -59,6 +59,9 @@ onMounted(() => {
             docStore.setDoc(msg.doc);
             configStore.setConfig(msg.config);
             applyTheme(msg.config.theme);
+        } else if (msg.type === 'configUpdated') {
+            configStore.setConfig(msg.config);
+            applyTheme(msg.config.theme);
         } else if (msg.type === 'docChanged') {
             docStore.setDoc(msg.doc);
         } else if (msg.type === 'runResponse') {
