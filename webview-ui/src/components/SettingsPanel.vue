@@ -1,6 +1,43 @@
 <template>
     <el-drawer v-model="visibleModel" title="编辑器设置" direction="rtl" size="480px" :append-to-body="true">
         <el-tabs v-model="activeTab">
+            <!-- ── Appearance ─────────────────────────────────── -->
+            <el-tab-pane label="外观" name="appearance">
+                <div class="tab-pane-content">
+                    <el-form label-width="80px" size="small">
+                        <el-form-item label="主题">
+                            <el-radio-group v-model="config.theme">
+                                <el-radio-button value="light">
+                                    <el-icon style="margin-right:4px"><Sunny /></el-icon>浅色
+                                </el-radio-button>
+                                <el-radio-button value="dark">
+                                    <el-icon style="margin-right:4px"><Moon /></el-icon>深色
+                                </el-radio-button>
+                            </el-radio-group>
+                        </el-form-item>
+                    </el-form>
+
+                    <div class="theme-preview">
+                        <div class="theme-preview-card" :class="config.theme === 'dark' ? 'preview-dark' : 'preview-light'">
+                            <div class="preview-sidebar">
+                                <div class="preview-item">
+                                    <span class="preview-badge preview-get">GET</span>
+                                    <span class="preview-path">/users</span>
+                                </div>
+                                <div class="preview-item">
+                                    <span class="preview-badge preview-post">POST</span>
+                                    <span class="preview-path">/users</span>
+                                </div>
+                                <div class="preview-item">
+                                    <span class="preview-badge preview-delete">DEL</span>
+                                    <span class="preview-path">/users/{id}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </el-tab-pane>
+
             <!-- ── Environments ─────────────────────────────────── -->
             <el-tab-pane label="环境变量" name="env">
                 <div class="tab-pane-content">
@@ -170,7 +207,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Plus, Delete } from '@element-plus/icons-vue';
+import { Plus, Delete, Sunny, Moon } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useConfigStore } from '../store/useConfigStore';
 import vscode from '../vscode';
@@ -188,7 +225,7 @@ const visibleModel = computed({
 
 const configStore = useConfigStore();
 const config = computed(() => configStore.config);
-const activeTab = ref('env');
+const activeTab = ref('appearance');
 const openEnv = ref('');
 
 // ── Environments ─────────────────────────────────────────────────────────────
@@ -273,4 +310,67 @@ function saveSettings() {
     align-items: center;
     margin-bottom: 4px;
 }
+
+/* ── Theme preview ────────────────────────────────────────────────── */
+.theme-preview {
+    margin-top: 16px;
+}
+
+.theme-preview-card {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid;
+    transition: all 0.3s ease;
+}
+
+.preview-light {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.preview-dark {
+    background: #181825;
+    border-color: #313244;
+}
+
+.preview-sidebar {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.preview-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 38px;
+    text-align: center;
+}
+
+/* Light mode preview badges */
+.preview-light .preview-get    { background: #61affe; color: #fff; }
+.preview-light .preview-post   { background: #49cc90; color: #fff; }
+.preview-light .preview-delete { background: #f93e3e; color: #fff; }
+
+/* Dark mode preview badges */
+.preview-dark .preview-get    { background: #2d6a9f; color: #89dceb; border: 1px solid #3a8ab0; }
+.preview-dark .preview-post   { background: #1a5e3a; color: #a6e3a1; border: 1px solid #3a8a58; }
+.preview-dark .preview-delete { background: #6e1a1a; color: #f38ba8; border: 1px solid #a03030; }
+
+.preview-path {
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.preview-light .preview-path { color: #374151; }
+.preview-dark  .preview-path { color: #cdd6f4; }
 </style>

@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import vscode from './vscode';
 import { useDocStore } from './store/useDocStore';
 import { useConfigStore } from './store/useConfigStore';
@@ -32,6 +32,18 @@ const docStore = useDocStore();
 const configStore = useConfigStore();
 const showSettings = ref(false);
 
+function applyTheme(theme: string | undefined) {
+    if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+}
+
+watch(() => configStore.config.theme, (theme) => {
+    applyTheme(theme);
+});
+
 onMounted(() => {
     // Receive messages from the extension host
     window.addEventListener('message', (event: MessageEvent<ExtToWebviewMessage>) => {
@@ -39,6 +51,7 @@ onMounted(() => {
         if (msg.type === 'init') {
             docStore.setDoc(msg.doc);
             configStore.setConfig(msg.config);
+            applyTheme(msg.config.theme);
         } else if (msg.type === 'docChanged') {
             docStore.setDoc(msg.doc);
         }
@@ -167,4 +180,186 @@ body {
 .el-input__inner {
     color: var(--vscode-input-foreground, #333) !important;
 }
+
+/* ══ Dark theme ════════════════════════════════════════════════════════
+   Palette: Catppuccin Mocha (https://catppuccin.com/)
+   ────────────────────────────────────────────────────────────────── */
+html.dark {
+    color-scheme: dark;
+
+    /* ── Layout backgrounds ── */
+    --vscode-editor-background:              #1e1e2e;
+    --vscode-sideBar-background:             #181825;
+    --vscode-sideBarSectionHeader-background:#11111b;
+    --vscode-panel-border:                   #313244;
+
+    /* ── Text ── */
+    --vscode-foreground:                     #cdd6f4;
+    --vscode-descriptionForeground:          #a6adc8;
+
+    /* ── Inputs ── */
+    --vscode-input-background:               #313244;
+    --vscode-input-foreground:               #cdd6f4;
+    --vscode-input-border:                   #45475a;
+    --vscode-input-placeholderForeground:    #6c7086;
+
+    /* ── Lists ── */
+    --vscode-list-hoverBackground:           #313244;
+    --vscode-list-activeSelectionBackground: #89b4fa;
+    --vscode-list-activeSelectionForeground: #1e1e2e;
+
+    /* ── Buttons ── */
+    --vscode-button-background:              #89b4fa;
+    --vscode-button-foreground:              #1e1e2e;
+
+    /* ── Code ── */
+    --vscode-textCodeBlock-background:       #313244;
+
+    /* ── Body reset ── */
+    background: #1e1e2e;
+    color: #cdd6f4;
+}
+
+/* Element Plus component overrides for dark mode */
+html.dark .el-input__wrapper {
+    background-color: #313244 !important;
+    box-shadow: 0 0 0 1px #45475a inset !important;
+}
+
+html.dark .el-input__inner {
+    color: #cdd6f4 !important;
+}
+
+html.dark .el-textarea__inner {
+    background-color: #313244 !important;
+    color: #cdd6f4 !important;
+    box-shadow: 0 0 0 1px #45475a inset !important;
+}
+
+html.dark .el-select .el-input__wrapper {
+    background-color: #313244 !important;
+}
+
+html.dark .el-select-dropdown {
+    background-color: #1e1e2e !important;
+    border-color: #45475a !important;
+}
+
+html.dark .el-select-dropdown__item {
+    color: #cdd6f4 !important;
+}
+
+html.dark .el-select-dropdown__item.is-hovering,
+html.dark .el-select-dropdown__item:hover {
+    background-color: #313244 !important;
+}
+
+html.dark .el-select-dropdown__item.is-selected {
+    color: #89b4fa !important;
+}
+
+html.dark .el-form-item__label {
+    color: #a6adc8 !important;
+}
+
+html.dark .el-collapse-item__header {
+    background-color: #181825 !important;
+    color: #cdd6f4 !important;
+    border-color: #313244 !important;
+}
+
+html.dark .el-collapse-item__wrap {
+    background-color: #1e1e2e !important;
+    border-color: #313244 !important;
+}
+
+html.dark .el-tag {
+    background-color: #313244;
+    border-color: #45475a;
+    color: #cdd6f4;
+}
+
+html.dark .el-tag--info {
+    background-color: #2a2a3d;
+    border-color: #45475a;
+    color: #a6adc8;
+}
+
+html.dark .el-empty__description p {
+    color: #6c7086 !important;
+}
+
+html.dark .el-table {
+    background-color: #1e1e2e !important;
+    color: #cdd6f4 !important;
+}
+
+html.dark .el-table th,
+html.dark .el-table td {
+    background-color: #1e1e2e !important;
+    border-color: #313244 !important;
+}
+
+html.dark .el-table__row:hover > td {
+    background-color: #313244 !important;
+}
+
+html.dark .el-drawer {
+    background-color: #1e1e2e !important;
+}
+
+html.dark .el-drawer__header {
+    color: #cdd6f4 !important;
+    border-bottom-color: #313244 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 16px !important;
+}
+
+html.dark .el-tabs__item {
+    color: #a6adc8 !important;
+}
+
+html.dark .el-tabs__item.is-active {
+    color: #89b4fa !important;
+}
+
+html.dark .el-tabs__active-bar {
+    background-color: #89b4fa !important;
+}
+
+html.dark .el-tabs__nav-wrap::after {
+    background-color: #313244 !important;
+}
+
+html.dark .el-button--primary {
+    background-color: #89b4fa !important;
+    border-color: #89b4fa !important;
+    color: #1e1e2e !important;
+}
+
+html.dark .el-button--primary:hover {
+    background-color: #b4befe !important;
+    border-color: #b4befe !important;
+}
+
+html.dark .el-button--default {
+    background-color: #313244 !important;
+    border-color: #45475a !important;
+    color: #cdd6f4 !important;
+}
+
+html.dark .el-button--default:hover {
+    background-color: #45475a !important;
+    border-color: #585b70 !important;
+}
+
+/* ── Dark mode: HTTP method badge colors (vivid for contrast) ── */
+html.dark .method-get    { background: #2d6a9f; color: #89dceb; border: 1px solid #3a90c6; }
+html.dark .method-post   { background: #1a5e3a; color: #a6e3a1; border: 1px solid #3a8a58; }
+html.dark .method-put    { background: #7a4e1a; color: #fab387; border: 1px solid #a06030; }
+html.dark .method-delete { background: #6e1a1a; color: #f38ba8; border: 1px solid #a03030; }
+html.dark .method-patch  { background: #1a5c5c; color: #94e2d5; border: 1px solid #2a8a82; }
+html.dark .method-options{ background: #3a2a6e; color: #cba6f7; border: 1px solid #5a4090; }
+html.dark .method-head   { background: #5c2a5c; color: #f5c2e7; border: 1px solid #8a4080; }
+html.dark .method-trace  { background: #3a3010; color: #f9e2af; border: 1px solid #6a5820; }
 </style>

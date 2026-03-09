@@ -7,6 +7,7 @@ const DEFAULT_CONFIG: EditorConfig = {
     auth: { type: 'none' },
     mock: { enabled: false, rules: [] },
     requestHistory: [],
+    theme: 'light',
 };
 
 export const useConfigStore = defineStore('config', () => {

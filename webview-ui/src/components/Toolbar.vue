@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRaw } from 'vue';
 import { Check, Setting, Document } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import { useConfigStore } from '../store/useConfigStore';
@@ -51,8 +51,10 @@ const activeEnv = computed({
 });
 
 function save() {
+    console.log('Saving document...', docStore.doc);
+    console.log('Current configuration:', configStore.config);
     if (docStore.doc) {
-        vscode.postMessage({ type: 'save', doc: docStore.doc });
+        vscode.postMessage({ type: 'save', doc : toRaw(docStore.doc) });
     }
 }
 </script>

@@ -62,6 +62,7 @@ export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
                     break;
 
                 case 'save': {
+                    console.log('Received save request from webview', message.doc);
                     ignoreNextDocChange = true;
                     const edit = new vscode.WorkspaceEdit();
                     const fullRange = new vscode.Range(
@@ -69,8 +70,12 @@ export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
                         document.positionAt(document.getText().length)
                     );
                     edit.replace(document.uri, fullRange, JSON.stringify(message.doc, null, 2));
-                    vscode.workspace.applyEdit(edit).then(() => {
-                        vscode.window.setStatusBarMessage('$(check) OpenAPI 已保存', 3000);
+                    vscode.workspace.applyEdit(edit).then((success) => {
+                        if (success) {
+                            document.save().then(() => {
+                                vscode.window.setStatusBarMessage('$(check) OpenAPI 已保存', 3000);
+                            });
+                        }
                     });
                     break;
                 }

@@ -131,12 +131,15 @@ export interface ServerObject {
 
 // ─── Editor Config ──────────────────────────────────────────────────────────
 
+export type ThemeMode = 'light' | 'dark';
+
 export interface EditorConfig {
     environments: Environment[];
     activeEnvironment?: string;
     auth: AuthConfig;
     mock: MockConfig;
     requestHistory: RequestHistoryItem[];
+    theme?: ThemeMode;
 }
 
 export interface Environment {
