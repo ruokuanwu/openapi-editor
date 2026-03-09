@@ -1,6 +1,5 @@
 <template>
-    <el-drawer v-model="visible" title="编辑器设置" direction="rtl" size="480px" :append-to-body="true"
-        @close="$emit('update:visible', false)">
+    <el-drawer v-model="visibleModel" title="编辑器设置" direction="rtl" size="480px" :append-to-body="true">
         <el-tabs v-model="activeTab">
             <!-- ── Environments ─────────────────────────────────── -->
             <el-tab-pane label="环境变量" name="env">
@@ -177,10 +176,15 @@ import { useConfigStore } from '../store/useConfigStore';
 import vscode from '../vscode';
 import type { Environment, EnvVariable } from '../types';
 
-defineProps<{ visible: boolean }>();
+const props = defineProps<{ visible: boolean }>();
 const emit = defineEmits<{
     (e: 'update:visible', v: boolean): void;
 }>();
+
+const visibleModel = computed({
+    get: () => props.visible,
+    set: (v: boolean) => emit('update:visible', v),
+});
 
 const configStore = useConfigStore();
 const config = computed(() => configStore.config);

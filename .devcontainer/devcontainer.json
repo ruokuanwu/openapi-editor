@@ -1,0 +1,53 @@
+{
+    "build": {
+        "dockerfile": "Dockerfile",
+        "options": [
+            "--network=host"
+        ],
+        "args": {
+            "http_proxy": "http://172.17.0.1:10808",
+            "https_proxy": "http://172.17.0.1:10808",
+            "HTTP_PROXY": "http://172.17.0.1:10808",
+            "HTTPS_PROXY": "http://172.17.0.1:10808",
+            "no_proxy": "localhost,127.0.0.1",
+            "NO_PROXY": "localhost,127.0.0.1"
+        }
+    },
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ],
+    "features": {
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1.8.0": {
+            "moby": false,
+            "dockerDashComposeVersion": "v2.32.3"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "adam-bender.commit-message-editor",
+                "johnny-zhao.oai-compatible-copilot",
+                "mhutchie.git-graph",
+                "cpulvermacher.lgtm",
+                "oderwat.indent-rainbow",
+                "actboy168.tasks",
+                "redhat.vscode-yaml",
+                "YuTengjing.vscode-archive",
+                "eamodio.gitlens",
+                "Vue.volar"
+            ],
+            "settings": {
+                "extensions.verifySignature": false
+            }
+        }
+    },
+    "containerEnv": {
+        "http_proxy": "http://172.17.0.1:10808",
+        "https_proxy": "http://172.17.0.1:10808",
+        "no_proxy": "localhost,127.0.0.1",
+    },
+    "forwardPorts": [
+        3001
+    ]
+    // "postStartCommand": "bash .devcontainer/post-start-command.sh"
+}
