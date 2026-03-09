@@ -33,6 +33,12 @@
                 <div class="schema-section-header">
                     <span class="schema-section-title">Schema</span>
                     <div class="schema-section-actions">
+                        <el-button-group size="small">
+                            <el-button :type="schemaViewMode === 'visual' ? 'primary' : ''" size="small"
+                                @click="schemaViewMode = 'visual'">表格</el-button>
+                            <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small"
+                                @click="schemaViewMode = 'json'">JSON</el-button>
+                        </el-button-group>
                         <el-tooltip :content="activeSchema.$ref ? '更换引用组件' : '引用组件'" placement="top" :show-after="500">
                             <el-button size="small" text :icon="Link" @click="openRefPicker">
                                 {{ activeSchema.$ref ? '更换组件' : '引用组件' }}
@@ -43,7 +49,10 @@
                         </el-tooltip>
                     </div>
                 </div>
-                <SchemaEditor :schema="activeSchema" />
+                <template v-if="schemaViewMode === 'visual'">
+                    <SchemaEditor :schema="activeSchema" />
+                </template>
+                <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(activeSchema, docStore.doc), null, 2) }}</pre>
             </div>
             <div v-else class="no-body">该 Content-Type 暂无 Schema</div>
         </template>
@@ -80,11 +89,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Plus, Delete, Link, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
 import type { SchemaObject } from '../types';
+import { generateMockData } from '../utils/mockGenerator';
 
 const COMMON_CONTENT_TYPES = [
     'application/json',
@@ -111,6 +121,8 @@ const contentTypes = computed((): string[] => {
 });
 
 const activeContentType = ref('application/json');
+const schemaViewMode = ref<'visual' | 'json'>('visual');
+watch(activeContentType, () => { schemaViewMode.value = 'visual'; });
 
 const activeSchema = computed((): SchemaObject | null => {
     if (!requestBody.value || !activeContentType.value) { return null; }
@@ -219,5 +231,20 @@ function derefActiveSchema() {
     padding: 24px;
     opacity: 0.7;
     font-size: 13px;
+}
+
+.mock-json {
+    margin: 0;
+    padding: 8px;
+    font-size: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: var(--vscode-textCodeBlock-background, #f5f5f5);
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 500px;
+    overflow-y: auto;
+    color: var(--vscode-foreground, #333);
+    border: 1px solid var(--vscode-panel-border, #e4e7ed);
 }
 </style>

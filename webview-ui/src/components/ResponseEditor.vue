@@ -52,6 +52,12 @@
                             <div class="schema-section-header">
                                 <div class="schema-section-title">Schema</div>
                                 <div class="schema-section-actions">
+                                    <el-button-group size="small">
+                                        <el-button :type="getSchemaViewMode(code) === 'visual' ? 'primary' : ''" size="small"
+                                            @click="setSchemaViewMode(code, 'visual')">&#x8868;&#x683c;</el-button>
+                                        <el-button :type="getSchemaViewMode(code) === 'json' ? 'primary' : ''" size="small"
+                                            @click="setSchemaViewMode(code, 'json')">JSON</el-button>
+                                    </el-button-group>
                                     <el-tooltip
                                         :content="responses[code].content![activeContentType[code]].schema?.$ref ? '更换引用组件' : '引用组件'"
                                         placement="top" :show-after="500">
@@ -68,7 +74,10 @@
                                     </el-tooltip>
                                 </div>
                             </div>
-                            <SchemaEditor :schema="ensureSchema(responses[code].content![activeContentType[code]])" />
+                            <template v-if="getSchemaViewMode(code) === 'visual'">
+                                <SchemaEditor :schema="ensureSchema(responses[code].content![activeContentType[code]])" />
+                            </template>
+                            <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(ensureSchema(responses[code].content![activeContentType[code]]), docStore.doc), null, 2) }}</pre>
                         </div>
                     </div>
 
@@ -101,11 +110,16 @@ import { Plus, Delete, Link, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
 import type { SchemaObject, MediaTypeObject } from '../types';
+import { generateMockData } from '../utils/mockGenerator';
 
 const docStore = useDocStore();
 
 const openCodes = ref<string>('');
 const activeContentType = reactive<Record<string, string>>({});
+// Per-response-code schema view mode: 'visual' | 'json'
+const schemaViewMode = reactive<Record<string, 'visual' | 'json'>>({});
+function getSchemaViewMode(code: string) { return schemaViewMode[code] ?? 'visual'; }
+function setSchemaViewMode(code: string, mode: 'visual' | 'json') { schemaViewMode[code] = mode; }
 
 const responses = computed(() => {
     const op = docStore.selectedOperation;
@@ -258,5 +272,20 @@ function derefSchema(code: string) {
     display: flex;
     gap: 4px;
     align-items: center;
+}
+
+.mock-json {
+    margin: 0;
+    padding: 8px;
+    font-size: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: var(--vscode-textCodeBlock-background, #f5f5f5);
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 400px;
+    overflow-y: auto;
+    color: var(--vscode-foreground, #333);
+    border: 1px solid var(--vscode-panel-border, #e4e7ed);
 }
 </style>

@@ -40,8 +40,8 @@
                 <template v-else>
                     <!-- Table view -->
                     <SchemaEditor v-if="refViewMode === 'table'" :schema="resolvedRef" :readonly="true" :level="0" />
-                    <!-- JSON view -->
-                    <pre v-else class="ref-json">{{ JSON.stringify(resolvedRef, null, 2) }}</pre>
+                    <!-- JSON view (Mock instance data, not schema metadata) -->
+                    <pre v-else class="ref-json">{{ JSON.stringify(generateMockData(resolvedRef, docStore.doc), null, 2) }}</pre>
                 </template>
             </div>
 
@@ -173,6 +173,7 @@ import { computed, reactive, ref } from 'vue';
 import { Plus, Delete, ArrowDown, ArrowRight, Right, Edit, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import type { SchemaObject } from '../types';
+import { generateMockData } from '../utils/mockGenerator';
 
 const SCHEMA_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object'];
 

@@ -1,32 +1,37 @@
 <template>
     <div class="endpoint-editor" v-if="operation && docStore.selectedPath && docStore.selectedMethod">
 
-        <!-- Outer tabs: Edit | Run -->
+        <!-- Outer tabs: Detail | Run -->
         <el-tabs v-model="runStore.activeMainTab" class="outer-tabs">
 
-            <!-- ── Tab 1: Edit (schema template) ─────────────────────── -->
+            <!-- ── Tab 1: Detail (view / edit) ───────────────────────── -->
             <el-tab-pane name="edit">
                 <template #label>
-                    <span>编辑</span>
+                    <span>详情</span>
                 </template>
 
-                <!-- Header: method + path + Run button + Export -->
+                <!-- Header: method-badge + path + Edit/Save button + Export -->
                 <div class="endpoint-header">
-                    <el-select v-model="editMethod" size="small" style="width: 110px" @change="onMethodChange">
-                        <el-option v-for="m in HTTP_METHODS" :key="m" :label="m.toUpperCase()" :value="m" />
-                    </el-select>
-                    <el-input v-model="editPath" size="small" style="flex: 1" @blur="onPathBlur" @keydown.enter="onPathBlur" />
-                    <el-tag v-if="operation.deprecated" type="warning" size="small">已废弃</el-tag>
+                    <!-- View mode: non-interactive method badge + path text -->
+                    <template v-if="!isEditing">
+                        <el-tag :type="methodTagType" class="method-badge" size="small">{{ editMethod.toUpperCase() }}</el-tag>
+                        <span class="path-text">{{ editPath }}</span>
+                        <el-tag v-if="operation.deprecated" type="warning" size="small">已废弃</el-tag>
+                        <div style="flex:1" />
+                        <el-button size="small" type="primary" @click="startEditing">编辑</el-button>
+                    </template>
+                    <!-- Edit mode: method selector + path input -->
+                    <template v-else>
+                        <el-select v-model="editMethod" size="small" style="width: 110px" @change="onMethodChange">
+                            <el-option v-for="m in HTTP_METHODS" :key="m" :label="m.toUpperCase()" :value="m" />
+                        </el-select>
+                        <el-input v-model="editPath" size="small" style="flex: 1" @blur="onPathBlur" @keydown.enter="onPathBlur" />
+                        <el-tag v-if="operation.deprecated" type="warning" size="small">已废弃</el-tag>
+                        <el-button size="small" type="success" @click="saveAndExit">保存</el-button>
+                        <el-button size="small" @click="cancelEdit">取消</el-button>
+                    </template>
 
-                    <!-- Run button → switches to Run tab -->
-                    <el-button
-                        size="small"
-                        type="primary"
-                        :icon="VideoPlay"
-                        @click="doRun"
-                    >运行</el-button>
-
-                    <!-- Export split-button -->
+                    <!-- Export split-button (always visible) -->
                     <el-dropdown split-button size="small" @click="doExport('curl')" @command="doExport">
                         导出
                         <template #dropdown>
@@ -38,8 +43,13 @@
                     </el-dropdown>
                 </div>
 
-                <!-- Inner tabs: Overview / Params / RequestBody / Responses -->
-                <el-tabs v-model="activeTab" class="editor-tabs">
+                <!-- View mode: human-friendly read-only panel -->
+                <div v-if="!isEditing" class="view-content">
+                    <EndpointViewPanel :operation="operation" />
+                </div>
+
+                <!-- Edit mode: inner tabs -->
+                <el-tabs v-else v-model="activeTab" class="editor-tabs">
                     <el-tab-pane label="概览" name="overview">
                         <EndpointMeta />
                     </el-tab-pane>
@@ -84,7 +94,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, toRaw } from 'vue';
-import { VideoPlay } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useDocStore } from '../store/useDocStore';
 import { useConfigStore } from '../store/useConfigStore';
@@ -99,11 +108,47 @@ import RequestBodyEditor from './RequestBodyEditor.vue';
 import ResponseEditor from './ResponseEditor.vue';
 import RunInstancePanel from './RunInstancePanel.vue';
 import RunResultPanel from './RunResultPanel.vue';
+import EndpointViewPanel from './EndpointViewPanel.vue';
 
 const docStore = useDocStore();
 const configStore = useConfigStore();
 const runStore = useRunStore();
 const activeTab = ref('overview');
+const isEditing = ref(false);
+
+interface EditSnapshot {
+    doc: typeof docStore.doc;
+    path: string;
+    method: HttpMethod;
+}
+const preEditSnapshot = ref<EditSnapshot | null>(null);
+
+function startEditing() {
+    preEditSnapshot.value = {
+        doc: JSON.parse(JSON.stringify(toRaw(docStore.doc))),
+        path: docStore.selectedPath ?? '',
+        method: (docStore.selectedMethod ?? 'get') as HttpMethod,
+    };
+    isEditing.value = true;
+}
+
+function saveAndExit() {
+    preEditSnapshot.value = null;
+    isEditing.value = false;
+    vscode.postMessage({ type: 'save', doc: toRaw(docStore.doc) });
+}
+
+function cancelEdit() {
+    if (preEditSnapshot.value) {
+        const snap = preEditSnapshot.value;
+        docStore.setDoc(snap.doc);
+        docStore.selectEndpoint(snap.path, snap.method);
+        editPath.value = snap.path;
+        editMethod.value = snap.method;
+        preEditSnapshot.value = null;
+    }
+    isEditing.value = false;
+}
 
 const operation = computed(() => docStore.selectedOperation);
 
@@ -116,7 +161,8 @@ watch(
     ([path, method]) => {
         editPath.value = path ?? '';
         editMethod.value = (method ?? 'get') as HttpMethod;
-        // Reset run state when switching endpoints
+        // Reset editing state and run state when switching endpoints
+        isEditing.value = false;
         runStore.close();
     }
 );
@@ -173,6 +219,21 @@ function doExport(type: 'curl' | 'openapi') {
         ElMessage.error('复制失败，请手动复制');
     });
 }
+
+const METHOD_COLORS: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
+    get: 'success',
+    post: '',
+    put: 'warning',
+    delete: 'danger',
+    patch: 'warning',
+    options: 'info',
+    head: 'info',
+    trace: 'info',
+};
+
+const methodTagType = computed((): '' | 'success' | 'warning' | 'danger' | 'info' =>
+    METHOD_COLORS[editMethod.value] ?? ''
+);
 </script>
 
 <style scoped>
@@ -216,6 +277,31 @@ function doExport(type: 'curl' | 'openapi') {
     gap: 8px;
     padding: 10px 0 8px;
     flex-shrink: 0;
+}
+
+.method-badge {
+    font-weight: 700;
+    font-family: monospace;
+    min-width: 52px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.path-text {
+    flex: 1;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    color: var(--vscode-foreground, #333);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.view-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 2px;
+    min-height: 0;
 }
 
 .editor-tabs {

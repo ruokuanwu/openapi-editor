@@ -14,8 +14,15 @@
         </div>
 
         <div v-else-if="activeSchema">
-            <div class="schema-section-title">Schema</div>
-            <SchemaEditor :schema="activeSchema" />
+            <div class="schema-section-title-row">
+                <span class="schema-section-title">Schema</span>
+                <el-button-group size="small">
+                    <el-button :type="schemaViewMode === 'visual' ? 'primary' : ''" size="small" @click="schemaViewMode = 'visual'">表格</el-button>
+                    <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small" @click="schemaViewMode = 'json'">JSON</el-button>
+                </el-button-group>
+            </div>
+            <SchemaEditor v-if="schemaViewMode === 'visual'" :schema="activeSchema" />
+            <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(activeSchema, docStore.doc), null, 2) }}</pre>
         </div>
 
         <!-- Add CT dialog -->
@@ -34,14 +41,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Plus, Delete } from '@element-plus/icons-vue';
 import SchemaEditor from './SchemaEditor.vue';
 import type { RequestBodyObject, SchemaObject } from '../types';
+import { useDocStore } from '../store/useDocStore';
+import { generateMockData } from '../utils/mockGenerator';
 
 const COMMON = ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'];
 
 const props = defineProps<{ requestBody: RequestBodyObject }>();
+
+const docStore = useDocStore();
+const schemaViewMode = ref<'visual' | 'json'>('visual');
 
 const activeContentType = ref('');
 const showAdd = ref(false);
@@ -57,6 +69,8 @@ const activeSchema = computed((): SchemaObject | null => {
     if (!mt.schema) { mt.schema = { type: 'object', properties: {} }; }
     return mt.schema;
 });
+
+watch(activeContentType, () => { schemaViewMode.value = 'visual'; });
 
 function removeCurrentCT() {
     if (!props.requestBody.content || !activeContentType.value) { return; }
@@ -84,11 +98,29 @@ function confirmAdd() {
     margin-bottom: 10px;
     flex-wrap: wrap;
 }
+.schema-section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
 .schema-section-title {
     font-weight: 600;
     font-size: 12px;
     opacity: 0.8;
-    margin-bottom: 8px;
+}
+.mock-json {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: var(--vscode-textCodeBlock-background, #f5f5f5);
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 400px;
+    overflow-y: auto;
+    color: var(--vscode-foreground, #333);
 }
 .no-content {
     padding: 16px;

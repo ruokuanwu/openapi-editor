@@ -41,8 +41,15 @@
                 </el-form-item>
             </el-form>
             <el-divider style="margin: 8px 0" />
-            <div class="schema-title">Schema 定义</div>
-            <SchemaEditor :schema="schemaValue as SchemaObject" />
+            <div class="schema-title-row">
+                <span class="schema-title">Schema 定义</span>
+                <el-button-group size="small">
+                    <el-button :type="schemaViewMode === 'visual' ? 'primary' : ''" size="small" @click="schemaViewMode = 'visual'">表格</el-button>
+                    <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small" @click="schemaViewMode = 'json'">JSON</el-button>
+                </el-button-group>
+            </div>
+            <SchemaEditor v-if="schemaViewMode === 'visual'" :schema="schemaValue as SchemaObject" />
+            <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(schemaValue as SchemaObject, docStore.doc), null, 2) }}</pre>
         </template>
 
         <!-- Response editor -->
@@ -76,8 +83,15 @@
                 </el-form-item>
             </el-form>
             <el-divider style="margin: 8px 0" />
-            <div class="schema-title">Schema</div>
-            <SchemaEditor v-if="ensureParamSchema(paramValue as ParameterObject)" :schema="(paramValue as ParameterObject).schema!" />
+            <div class="schema-title-row">
+                <span class="schema-title">Schema</span>
+                <el-button-group size="small">
+                    <el-button :type="paramViewMode === 'visual' ? 'primary' : ''" size="small" @click="paramViewMode = 'visual'">表格</el-button>
+                    <el-button :type="paramViewMode === 'json' ? 'primary' : ''" size="small" @click="paramViewMode = 'json'">JSON</el-button>
+                </el-button-group>
+            </div>
+            <SchemaEditor v-if="paramViewMode === 'visual' && ensureParamSchema(paramValue as ParameterObject)" :schema="(paramValue as ParameterObject).schema!" />
+            <pre v-else-if="paramViewMode === 'json' && ensureParamSchema(paramValue as ParameterObject)" class="mock-json">{{ JSON.stringify(generateMockData((paramValue as ParameterObject).schema!, docStore.doc), null, 2) }}</pre>
         </template>
 
         <!-- RequestBody editor -->
@@ -108,14 +122,21 @@ import SchemaEditor from './SchemaEditor.vue';
 import ResponseBodyEditor from './ResponseBodyEditor.vue';
 import RequestBodyContentEditor from './RequestBodyContentEditor.vue';
 import type { SchemaObject, ResponseObject, ParameterObject, RequestBodyObject } from '../types';
+import { generateMockData } from '../utils/mockGenerator';
 
 const docStore = useDocStore();
 
 // ── Local name (for rename) ──────────────────────────────────────────────────
 const localName = ref(docStore.selectedComponentName ?? '');
 
+// ── Schema/param view modes ───────────────────────────────────────────────────
+const schemaViewMode = ref<'visual' | 'json'>('visual');
+const paramViewMode = ref<'visual' | 'json'>('visual');
+
 watch(() => docStore.selectedComponentName, (n) => {
     localName.value = n ?? '';
+    schemaViewMode.value = 'visual';
+    paramViewMode.value = 'visual';
     if (docStore.selectedComponentType === 'schemas') {
         const s = schemaValue.value as SchemaObject | null;
         exampleText.value = s?.example !== undefined ? JSON.stringify(s.example, null, 2) : '';
@@ -239,6 +260,31 @@ function ensureParamSchema(param: ParameterObject): boolean {
     font-size: 12px;
     opacity: 0.8;
     margin-bottom: 8px;
+}
+
+.schema-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.schema-title-row .schema-title {
+    margin-bottom: 0;
+}
+
+.mock-json {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: var(--vscode-textCodeBlock-background, #f5f5f5);
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 400px;
+    overflow-y: auto;
+    color: var(--vscode-foreground, #333);
 }
 
 .example-error {
