@@ -18,9 +18,6 @@
                     :value="env.id" />
             </el-select>
 
-            <el-button size="small" @click="save" type="primary" :icon="Check">
-                保存
-            </el-button>
             <el-button size="small" @click="emit('openSettings')" :icon="Setting">
                 设置
             </el-button>
@@ -29,12 +26,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, toRaw } from 'vue';
-import { Check, Setting, Document } from '@element-plus/icons-vue';
+import { computed } from 'vue';
+import { Setting, Document } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import { useConfigStore } from '../store/useConfigStore';
 import vscode from '../vscode';
-import { ElMessage } from 'element-plus';
 
 const emit = defineEmits<{ (e: 'openSettings'): void }>();
 
@@ -50,13 +46,6 @@ const activeEnv = computed({
         vscode.postMessage({ type: 'updateConfig', config: { activeEnvironment: id || undefined } });
     },
 });
-
-function save() {
-    if (docStore.doc) {
-        vscode.postMessage({ type: 'save', doc : toRaw(docStore.doc) });
-        ElMessage.success('已保存');
-    }
-}
 </script>
 
 <style scoped>

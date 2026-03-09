@@ -13,6 +13,7 @@ import type {
 import { HTTP_METHODS } from '../types';
 
 export type ComponentType = 'schemas' | 'responses' | 'parameters' | 'requestBodies';
+export type EditSessionOwner = 'endpoint' | 'component';
 
 export interface EndpointItem {
     path: string;
@@ -34,6 +35,8 @@ export const useDocStore = defineStore('doc', () => {
     const selectedMethod = ref<HttpMethod | null>(null);
     const selectedComponentType = ref<ComponentType | null>(null);
     const selectedComponentName = ref<string | null>(null);
+    const editSessionOwner = ref<EditSessionOwner | null>(null);
+    const editSessionDirty = ref(false);
 
     // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -119,10 +122,32 @@ export const useDocStore = defineStore('doc', () => {
         return section?.[selectedComponentName.value] ?? null;
     });
 
+    const hasBlockingUnsavedChanges = computed(() =>
+        editSessionOwner.value !== null
+    );
+
     // ── Actions ───────────────────────────────────────────────────────────────
 
     function setDoc(newDoc: OpenApiDoc) {
         doc.value = newDoc;
+    }
+
+    function startEditSession(owner: EditSessionOwner) {
+        editSessionOwner.value = owner;
+        editSessionDirty.value = false;
+    }
+
+    function setEditSessionDirty(dirty: boolean) {
+        if (!editSessionOwner.value) { return; }
+        editSessionDirty.value = dirty;
+    }
+
+    function endEditSession(owner?: EditSessionOwner) {
+        if (owner && editSessionOwner.value && owner !== editSessionOwner.value) {
+            return;
+        }
+        editSessionOwner.value = null;
+        editSessionDirty.value = false;
     }
 
     function selectEndpoint(path: string, method: HttpMethod) {
@@ -287,12 +312,18 @@ export const useDocStore = defineStore('doc', () => {
         selectedMethod,
         selectedComponentType,
         selectedComponentName,
+        editSessionOwner,
+        editSessionDirty,
+        hasBlockingUnsavedChanges,
         endpointGroups,
         selectedOperation,
         selectedComponent,
         allTags,
         allSchemaNames,
         setDoc,
+        startEditSession,
+        setEditSessionDirty,
+        endEditSession,
         selectEndpoint,
         clearSelection,
         selectComponent,

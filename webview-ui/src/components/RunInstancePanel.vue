@@ -12,6 +12,12 @@
                     :loading="runStore.loading"
                     @click="doSend"
                 >发送</el-button>
+                <el-button
+                    type="warning"
+                    size="small"
+                    :icon="Download"
+                    @click="doExportCurl"
+                >导出</el-button>
             </div>
         </div>
 
@@ -165,13 +171,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
-import { Plus, Delete, Promotion } from '@element-plus/icons-vue';
+import { computed, watch, toRaw } from 'vue';
+import { Plus, Delete, Promotion, Download } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useDocStore } from '../store/useDocStore';
 import { useConfigStore } from '../store/useConfigStore';
 import { useRunStore } from '../store/useRunStore';
 import { buildRunRequestFromInstance } from '../utils/requestBuilder';
+import { buildCurl } from '../utils/exportUtils';
 import vscode from '../vscode';
 import type { ParameterIn } from '../types';
 
@@ -338,6 +345,21 @@ async function doSend() {
 
     vscode.postMessage({ type: 'runRequest', id, method: req.method, url: req.url, headers: req.headers, body: req.body });
 }
+
+async function doExportCurl() {
+    const op = docStore.selectedOperation;
+    const p = path.value;
+    const m = method.value;
+    const doc = docStore.doc;
+    if (!op || !p || !m || !doc) { return; }
+
+    const text = buildCurl(toRaw(op), p, m, configStore, toRaw(doc));
+    navigator.clipboard.writeText(text).then(() => {
+        ElMessage.success('已复制');
+    }).catch(() => {
+        ElMessage.error('复制失败，请手动复制');
+    });
+}
 </script>
 
 <style scoped>
@@ -370,6 +392,9 @@ async function doSend() {
 }
 
 .ri-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     flex-shrink: 0;
 }
 

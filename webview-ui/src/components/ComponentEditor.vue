@@ -7,18 +7,21 @@
                 v-model="localName"
                 class="comp-name-input"
                 size="large"
+                :disabled="!isEditing"
                 @blur="handleRename"
                 @keydown.enter="($event.target as HTMLInputElement).blur()"
                 placeholder="组件名称"
             />
-            <el-popconfirm title="确认删除该组件？" @confirm="handleDelete" confirm-button-text="删除" cancel-button-text="取消">
-                <template #reference>
-                    <el-button type="danger" text :icon="Delete" size="small">删除</el-button>
-                </template>
-            </el-popconfirm>
+            <el-button v-if="!isEditing" type="primary" size="small" @click="startEditing">编辑</el-button>
+            <template v-else>
+                <el-button type="success" size="small" @click="saveAndExit">保存</el-button>
+                <el-button type="danger" plain size="small" @click="cancelEdit">取消</el-button>
+            </template>
         </div>
 
         <el-divider style="margin: 8px 0" />
+
+        <div class="comp-edit-body" :class="{ 'is-readonly': !isEditing }">
 
         <!-- Schema metadata (only for schemas type) -->
         <template v-if="docStore.selectedComponentType === 'schemas' && schemaValue">
@@ -48,7 +51,7 @@
                     <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small" @click="schemaViewMode = 'json'">JSON</el-button>
                 </el-button-group>
             </div>
-            <SchemaEditor v-if="schemaViewMode === 'visual'" :schema="schemaValue as SchemaObject" />
+            <SchemaEditor v-if="schemaViewMode === 'visual'" :schema="schemaValue as SchemaObject" :readonly="!isEditing" />
             <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(schemaValue as SchemaObject, docStore.doc), null, 2) }}</pre>
         </template>
 
@@ -90,7 +93,7 @@
                     <el-button :type="paramViewMode === 'json' ? 'primary' : ''" size="small" @click="paramViewMode = 'json'">JSON</el-button>
                 </el-button-group>
             </div>
-            <SchemaEditor v-if="paramViewMode === 'visual' && ensureParamSchema(paramValue as ParameterObject)" :schema="(paramValue as ParameterObject).schema!" />
+            <SchemaEditor v-if="paramViewMode === 'visual' && ensureParamSchema(paramValue as ParameterObject)" :schema="(paramValue as ParameterObject).schema!" :readonly="!isEditing" />
             <pre v-else-if="paramViewMode === 'json' && ensureParamSchema(paramValue as ParameterObject)" class="mock-json">{{ JSON.stringify(generateMockData((paramValue as ParameterObject).schema!, docStore.doc), null, 2) }}</pre>
         </template>
 
@@ -107,6 +110,7 @@
             <el-divider style="margin: 8px 0" />
             <RequestBodyContentEditor :request-body="reqBodyValue as RequestBodyObject" />
         </template>
+        </div>
     </div>
 
     <div v-else class="comp-empty-state">
@@ -115,25 +119,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { Delete } from '@element-plus/icons-vue';
+import { ref, computed, watch, toRaw } from 'vue';
 import { useDocStore } from '../store/useDocStore';
+import type { ComponentType } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
 import ResponseBodyEditor from './ResponseBodyEditor.vue';
 import RequestBodyContentEditor from './RequestBodyContentEditor.vue';
-import type { SchemaObject, ResponseObject, ParameterObject, RequestBodyObject } from '../types';
+import type { OpenApiDoc, SchemaObject, ResponseObject, ParameterObject, RequestBodyObject } from '../types';
 import { generateMockData } from '../utils/mockGenerator';
+import vscode from '../vscode';
 
 const docStore = useDocStore();
 
 // ── Local name (for rename) ──────────────────────────────────────────────────
 const localName = ref(docStore.selectedComponentName ?? '');
+const isEditing = ref(false);
+
+interface ComponentEditSnapshot {
+    doc: OpenApiDoc;
+    type: ComponentType;
+    name: string;
+}
+const preEditSnapshot = ref<ComponentEditSnapshot | null>(null);
 
 // ── Schema/param view modes ───────────────────────────────────────────────────
 const schemaViewMode = ref<'visual' | 'json'>('visual');
 const paramViewMode = ref<'visual' | 'json'>('visual');
 
-watch(() => docStore.selectedComponentName, (n) => {
+watch([() => docStore.selectedComponentName, () => docStore.selectedComponentType], ([n]) => {
+    if ((!docStore.selectedComponentName || !docStore.selectedComponentType) && isEditing.value) {
+        isEditing.value = false;
+        preEditSnapshot.value = null;
+        docStore.endEditSession('component');
+    }
     localName.value = n ?? '';
     schemaViewMode.value = 'visual';
     paramViewMode.value = 'visual';
@@ -144,18 +162,65 @@ watch(() => docStore.selectedComponentName, (n) => {
 });
 
 function handleRename() {
+    if (!isEditing.value) { return; }
     const newName = localName.value.trim();
     const oldName = docStore.selectedComponentName;
     if (!newName || !oldName || newName === oldName) { return; }
     docStore.renameComponent(docStore.selectedComponentType!, oldName, newName);
 }
 
-// ── Delete ───────────────────────────────────────────────────────────────────
-function handleDelete() {
-    if (docStore.selectedComponentType && docStore.selectedComponentName) {
-        docStore.removeComponent(docStore.selectedComponentType, docStore.selectedComponentName);
+function startEditing() {
+    if (!docStore.doc || !docStore.selectedComponentType || !docStore.selectedComponentName) {
+        return;
+    }
+    preEditSnapshot.value = {
+        doc: JSON.parse(JSON.stringify(toRaw(docStore.doc))) as OpenApiDoc,
+        type: docStore.selectedComponentType,
+        name: docStore.selectedComponentName,
+    };
+    docStore.startEditSession('component');
+    docStore.setEditSessionDirty(false);
+    isEditing.value = true;
+}
+
+function saveAndExit() {
+    preEditSnapshot.value = null;
+    isEditing.value = false;
+    docStore.endEditSession('component');
+    if (docStore.doc) {
+        vscode.postMessage({ type: 'save', doc: toRaw(docStore.doc) });
     }
 }
+
+function cancelEdit() {
+    const snap = preEditSnapshot.value;
+    isEditing.value = false;
+    docStore.endEditSession('component');
+    if (snap) {
+        docStore.setDoc(snap.doc);
+        docStore.selectComponent(snap.type, snap.name);
+        localName.value = snap.name;
+    }
+    preEditSnapshot.value = null;
+}
+
+function syncComponentDirtyState() {
+    if (!isEditing.value || !preEditSnapshot.value || !docStore.doc) {
+        docStore.setEditSessionDirty(false);
+        return;
+    }
+    const current = JSON.stringify(toRaw(docStore.doc));
+    const baseline = JSON.stringify(preEditSnapshot.value.doc);
+    docStore.setEditSessionDirty(current !== baseline);
+}
+
+watch(
+    () => docStore.doc,
+    () => {
+        syncComponentDirtyState();
+    },
+    { deep: true }
+);
 
 // ── Type helpers ─────────────────────────────────────────────────────────────
 const typeLabel = computed(() => {
@@ -253,6 +318,20 @@ function ensureParamSchema(param: ParameterObject): boolean {
 
 .meta-form {
     margin-top: 4px;
+}
+
+.comp-edit-body.is-readonly {
+    pointer-events: none;
+}
+
+.comp-edit-body.is-readonly .schema-title-row {
+    pointer-events: auto;
+}
+
+.comp-edit-body.is-readonly :deep(.el-input__wrapper),
+.comp-edit-body.is-readonly :deep(.el-textarea__inner),
+.comp-edit-body.is-readonly :deep(.el-select__wrapper) {
+    opacity: 0.9;
 }
 
 .schema-title {

@@ -25,7 +25,7 @@
                 :class="{ active: selectedName === name }"
                 @click="$emit('select', name)">
                 <span class="comp-item-name" :title="name">{{ name }}</span>
-                <el-icon class="comp-delete-icon" @click.stop="$emit('remove', name)" title="删除">
+                <el-icon v-if="canRemove" class="comp-delete-icon" @click.stop="$emit('remove', name)" title="删除">
                     <Close />
                 </el-icon>
             </div>
@@ -42,6 +42,7 @@ defineProps<{
     type: string;
     names: string[];
     selectedName: string | null | undefined;
+    canRemove?: boolean;
 }>();
 
 defineEmits<{

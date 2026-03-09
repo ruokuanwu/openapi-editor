@@ -52,7 +52,7 @@
                             <div v-for="ep in group.endpoints" :key="`${ep.method}:${ep.path}`"
                                 class="endpoint-item"
                                 :class="{ active: isEndpointSelected(ep.path, ep.method) }"
-                                @click="docStore.selectEndpoint(ep.path, ep.method)">
+                                @click="selectEndpointWithGuard(ep.path, ep.method)">
                                 <span class="method-badge" :class="`method-${ep.method}`">
                                     {{ ep.method.toUpperCase() }}
                                 </span>
@@ -82,8 +82,9 @@
                         label="Schemas"
                         type="schemas"
                         :names="componentNames('schemas')"
+                        :can-remove="true"
                         @add="openAddComponent('schemas')"
-                        @select="(name) => docStore.selectComponent('schemas', name)"
+                        @select="(name) => selectComponentWithGuard('schemas', name)"
                         @remove="(name) => removeComponent('schemas', name)"
                         :selected-name="docStore.selectedComponentType === 'schemas' ? docStore.selectedComponentName : null"
                     />
@@ -92,8 +93,9 @@
                         label="Responses"
                         type="responses"
                         :names="componentNames('responses')"
+                        :can-remove="true"
                         @add="openAddComponent('responses')"
-                        @select="(name) => docStore.selectComponent('responses', name)"
+                        @select="(name) => selectComponentWithGuard('responses', name)"
                         @remove="(name) => removeComponent('responses', name)"
                         :selected-name="docStore.selectedComponentType === 'responses' ? docStore.selectedComponentName : null"
                     />
@@ -102,8 +104,9 @@
                         label="Parameters"
                         type="parameters"
                         :names="componentNames('parameters')"
+                        :can-remove="true"
                         @add="openAddComponent('parameters')"
-                        @select="(name) => docStore.selectComponent('parameters', name)"
+                        @select="(name) => selectComponentWithGuard('parameters', name)"
                         @remove="(name) => removeComponent('parameters', name)"
                         :selected-name="docStore.selectedComponentType === 'parameters' ? docStore.selectedComponentName : null"
                     />
@@ -112,8 +115,9 @@
                         label="Request Bodies"
                         type="requestBodies"
                         :names="componentNames('requestBodies')"
+                        :can-remove="true"
                         @add="openAddComponent('requestBodies')"
-                        @select="(name) => docStore.selectComponent('requestBodies', name)"
+                        @select="(name) => selectComponentWithGuard('requestBodies', name)"
                         @remove="(name) => removeComponent('requestBodies', name)"
                         :selected-name="docStore.selectedComponentType === 'requestBodies' ? docStore.selectedComponentName : null"
                     />
@@ -176,7 +180,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue';
 import { Plus, Close, ArrowDown, ArrowRight, CollectionTag, Delete } from '@element-plus/icons-vue';
-import { ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useDocStore } from '../store/useDocStore';
 import { HTTP_METHODS } from '../types';
 import type { HttpMethod } from '../types';
@@ -207,6 +211,24 @@ function isEndpointSelected(path: string, method: HttpMethod) {
     return docStore.selectedPath === path && docStore.selectedMethod === method;
 }
 
+function canSwitchSelection(): boolean {
+    if (docStore.hasBlockingUnsavedChanges) {
+        ElMessage.warning('当前有未保存内容，请先保存或取消');
+        return false;
+    }
+    return true;
+}
+
+function selectEndpointWithGuard(path: string, method: HttpMethod) {
+    if (!canSwitchSelection()) { return; }
+    docStore.selectEndpoint(path, method);
+}
+
+function selectComponentWithGuard(type: ComponentType, name: string) {
+    if (!canSwitchSelection()) { return; }
+    docStore.selectComponent(type, name);
+}
+
 // ── Remove endpoint ──────────────────────────────────────────────────────────
 function removeEndpoint(path: string, method: HttpMethod) {
     ElMessageBox.confirm(`确认删除 ${method.toUpperCase()} ${path}？`, '删除接口', {
@@ -223,6 +245,7 @@ const showAddEndpoint = ref(false);
 const newEndpoint = reactive({ method: 'get' as HttpMethod, path: '' });
 
 function confirmAddEndpoint() {
+    if (!canSwitchSelection()) { return; }
     const path = newEndpoint.path.trim();
     if (!path) { return; }
     docStore.addEndpoint(path.startsWith('/') ? path : `/${path}`, newEndpoint.method);
@@ -281,6 +304,7 @@ function openAddComponent(type: ComponentType) {
 }
 
 function confirmAddComponent() {
+    if (!canSwitchSelection()) { return; }
     const name = newComponentName.value.trim();
     if (!name) { return; }
     const defaults: Record<ComponentType, unknown> = {

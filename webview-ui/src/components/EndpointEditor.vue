@@ -12,35 +12,41 @@
 
                 <!-- Header: method-badge + path + Edit/Save button + Export -->
                 <div class="endpoint-header">
-                    <!-- View mode: non-interactive method badge + path text -->
-                    <template v-if="!isEditing">
-                        <el-tag :type="methodTagType" class="method-badge" size="small">{{ editMethod.toUpperCase() }}</el-tag>
-                        <span class="path-text">{{ editPath }}</span>
-                        <el-tag v-if="operation.deprecated" type="warning" size="small">已废弃</el-tag>
-                        <div style="flex:1" />
-                        <el-button size="small" type="primary" @click="startEditing">编辑</el-button>
-                    </template>
-                    <!-- Edit mode: method selector + path input -->
-                    <template v-else>
-                        <el-select v-model="editMethod" size="small" style="width: 110px" @change="onMethodChange">
-                            <el-option v-for="m in HTTP_METHODS" :key="m" :label="m.toUpperCase()" :value="m" />
-                        </el-select>
-                        <el-input v-model="editPath" size="small" style="flex: 1" @blur="onPathBlur" @keydown.enter="onPathBlur" />
-                        <el-tag v-if="operation.deprecated" type="warning" size="small">已废弃</el-tag>
-                        <el-button size="small" type="success" @click="saveAndExit">保存</el-button>
-                        <el-button size="small" @click="cancelEdit">取消</el-button>
-                    </template>
-
-                    <!-- Export split-button (always visible) -->
-                    <el-dropdown split-button size="small" @click="doExport('curl')" @command="doExport">
-                        导出
-                        <template #dropdown>
-                            <el-dropdown-menu>
-                                <el-dropdown-item command="curl">导出 cURL</el-dropdown-item>
-                                <el-dropdown-item command="openapi">导出 OpenAPI JSON</el-dropdown-item>
-                            </el-dropdown-menu>
+                    <div class="endpoint-main">
+                        <!-- View mode: non-interactive method badge + path text -->
+                        <template v-if="!isEditing">
+                            <el-tag :type="methodTagType" class="method-badge" size="small">{{ editMethod.toUpperCase() }}</el-tag>
+                            <span class="path-text">{{ editPath }}</span>
+                            <el-tag v-if="operation.deprecated" type="warning" size="small">已废弃</el-tag>
                         </template>
-                    </el-dropdown>
+                        <!-- Edit mode: method selector + path input -->
+                        <template v-else>
+                            <el-select v-model="editMethod" size="small" style="width: 110px" @change="onMethodChange">
+                                <el-option v-for="m in HTTP_METHODS" :key="m" :label="m.toUpperCase()" :value="m" />
+                            </el-select>
+                            <el-input v-model="editPath" size="small" style="flex: 1" @blur="onPathBlur" @keydown.enter="onPathBlur" />
+                            <el-tag v-if="operation.deprecated" type="warning" size="small">已废弃</el-tag>
+                        </template>
+                    </div>
+
+                    <div class="endpoint-actions">
+                        <el-button v-if="!isEditing" size="small" type="primary" @click="startEditing">编辑</el-button>
+                        <template v-else>
+                            <el-button size="small" type="success" @click="saveAndExit">保存</el-button>
+                            <el-button size="small" type="danger" plain @click="cancelEdit">取消</el-button>
+                        </template>
+
+                        <!-- Export split-button (always visible) -->
+                        <el-dropdown split-button type="warning" size="small" @click="doExport('curl')" @command="doExport">
+                            导出
+                            <template #dropdown>
+                                <el-dropdown-menu>
+                                    <el-dropdown-item command="curl">导出 cURL</el-dropdown-item>
+                                    <el-dropdown-item command="openapi">导出 OpenAPI JSON</el-dropdown-item>
+                                </el-dropdown-menu>
+                            </template>
+                        </el-dropdown>
+                    </div>
                 </div>
 
                 <!-- View mode: human-friendly read-only panel -->
@@ -129,25 +135,40 @@ function startEditing() {
         path: docStore.selectedPath ?? '',
         method: (docStore.selectedMethod ?? 'get') as HttpMethod,
     };
+    docStore.startEditSession('endpoint');
+    docStore.setEditSessionDirty(false);
     isEditing.value = true;
 }
 
 function saveAndExit() {
     preEditSnapshot.value = null;
     isEditing.value = false;
+    docStore.endEditSession('endpoint');
     vscode.postMessage({ type: 'save', doc: toRaw(docStore.doc) });
 }
 
 function cancelEdit() {
     if (preEditSnapshot.value) {
         const snap = preEditSnapshot.value;
+        docStore.endEditSession('endpoint');
         docStore.setDoc(snap.doc);
         docStore.selectEndpoint(snap.path, snap.method);
         editPath.value = snap.path;
         editMethod.value = snap.method;
         preEditSnapshot.value = null;
     }
+    docStore.endEditSession('endpoint');
     isEditing.value = false;
+}
+
+function syncEndpointDirtyState() {
+    if (!isEditing.value || !preEditSnapshot.value || !docStore.doc) {
+        docStore.setEditSessionDirty(false);
+        return;
+    }
+    const current = JSON.stringify(toRaw(docStore.doc));
+    const baseline = JSON.stringify(preEditSnapshot.value.doc);
+    docStore.setEditSessionDirty(current !== baseline);
 }
 
 const operation = computed(() => docStore.selectedOperation);
@@ -162,9 +183,21 @@ watch(
         editPath.value = path ?? '';
         editMethod.value = (method ?? 'get') as HttpMethod;
         // Reset editing state and run state when switching endpoints
+        if (isEditing.value) {
+            docStore.endEditSession('endpoint');
+            preEditSnapshot.value = null;
+        }
         isEditing.value = false;
         runStore.close();
     }
+);
+
+watch(
+    () => docStore.doc,
+    () => {
+        syncEndpointDirtyState();
+    },
+    { deep: true }
 );
 
 const responseCount = computed(
@@ -276,6 +309,21 @@ const methodTagType = computed((): '' | 'success' | 'warning' | 'danger' | 'info
     align-items: center;
     gap: 8px;
     padding: 10px 0 8px;
+    flex-shrink: 0;
+}
+
+.endpoint-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.endpoint-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     flex-shrink: 0;
 }
 
