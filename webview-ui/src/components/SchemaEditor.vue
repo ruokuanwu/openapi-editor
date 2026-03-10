@@ -102,10 +102,10 @@
                     </template>
                 </el-table-column>
 
-                <!-- Expand nested object / delete -->
+                <!-- Expand nested object / array / delete -->
                 <el-table-column label="" width="44" align="center">
                     <template #default="{ row, $index }">
-                        <el-button v-if="row.schema.type === 'object' || row.schema.$ref" size="small" text
+                        <el-button v-if="row.schema.type === 'object' || row.schema.$ref || row.schema.type === 'array'" size="small" text
                             :icon="expanded[$index] ? ArrowDown : ArrowRight"
                             @click="expanded[$index] = !expanded[$index]" />
                         <el-button v-else-if="!readonly" size="small" type="danger" text :icon="Delete"
