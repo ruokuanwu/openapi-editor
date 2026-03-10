@@ -379,6 +379,8 @@ async function doExportCurl() {
     border-bottom: 1px solid var(--vscode-panel-border, #e4e7ed);
     background: var(--vscode-sideBar-background, #f5f5f5);
     flex-shrink: 0;
+    height: 36px;
+    box-sizing: border-box;
 }
 
 .ri-path {

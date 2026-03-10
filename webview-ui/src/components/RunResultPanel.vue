@@ -79,9 +79,15 @@
                 </el-collapse>
 
                 <!-- Response Body -->
-                <el-collapse v-if="runStore.result.response.body" class="rp-collapse">
+                <el-collapse v-if="runStore.result.response.body" class="rp-collapse" :model-value="['res-body']">
                     <el-collapse-item title="Body" name="res-body">
-                        <pre class="code-block">{{ formattedBody }}</pre>
+                        <textarea
+                            ref="bodyTextarea"
+                            class="code-block"
+                            readonly
+                            spellcheck="false"
+                            :value="formattedBody"
+                        ></textarea>
                     </el-collapse-item>
                 </el-collapse>
             </div>
@@ -95,10 +101,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useRunStore } from '../store/useRunStore';
 
 const runStore = useRunStore();
+
+const bodyTextarea = ref<HTMLTextAreaElement | null>(null);
 
 const reqHeaderEntries = computed(() =>
     Object.entries(runStore.result?.request.headers ?? {})
@@ -124,6 +132,14 @@ const formattedBody = computed(() => {
         return body;
     }
 });
+
+watch(formattedBody, async () => {
+    await nextTick();
+    if (bodyTextarea.value) {
+        bodyTextarea.value.style.height = 'auto';
+        bodyTextarea.value.style.height = bodyTextarea.value.scrollHeight + 'px';
+    }
+}, { immediate: true });
 </script>
 
 <style scoped>
@@ -145,6 +161,8 @@ const formattedBody = computed(() => {
     border-bottom: 1px solid var(--vscode-panel-border, #e4e7ed);
     background: var(--vscode-sideBar-background, #f5f5f5);
     flex-shrink: 0;
+    height: 36px;
+    box-sizing: border-box;
 }
 
 .rp-title {
@@ -294,10 +312,17 @@ const formattedBody = computed(() => {
     white-space: pre-wrap;
     word-break: break-all;
     background: var(--vscode-textCodeBlock-background, #f5f5f5);
+    color: var(--vscode-foreground, #333);
     padding: 8px;
     border-radius: 4px;
-    max-height: 300px;
-    overflow-y: auto;
+    overflow: hidden;
+    resize: none;
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+    outline: none;
+    cursor: text;
+    line-height: 1.5;
 }
 
 /* ── Dark overrides ── */
