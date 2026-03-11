@@ -1,21 +1,23 @@
 {
 	"compilerOptions": {
-		"module": "Node16",
-		"target": "ES2022",
-		"outDir": "out",
-		"lib": [
-			"ES2022"
-		],
-		"sourceMap": true,
-		"rootDir": "src",
-		"strict": true, /* enable all strict type-checking options */
-		/* Additional Checks */
-		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
-		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
-		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler", // 解决你之前的后缀名报错
+		"strict": true, // 开启严格模式
+		"declaration": true, // 生成定义文件
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"isolatedModules": true,
+		"resolveJsonModule": true,
+		"baseUrl": ".",
+		"paths": {
+			"@openapi-editor/shared": [
+				"packages/shared/src/index.ts"
+			]
+		}
 	},
 	"exclude": [
-		"webview-ui",
-		"node_modules"
+		"node_modules",
+		"dist"
 	]
 }

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { EditorConfig, Environment, AuthConfig, MockConfig, ThemeMode } from '../shared/types';
+import type { EditorConfig, Environment, AuthConfig, MockConfig, ThemeMode } from '../../../shared/src/types';
 
 const SECTION = 'openapi-editor';
 

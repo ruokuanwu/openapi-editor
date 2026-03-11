@@ -1,0 +1,2 @@
+packages:
+  - "packages/*" # 告诉 pnpm 你的 extension, shared, webview 都在 packages 目录下

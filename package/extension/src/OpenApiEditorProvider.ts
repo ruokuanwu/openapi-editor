@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { configManager } from './utils/configManager';
-import type { WebviewToExtMessage, OpenApiDoc, RequestHistoryItem } from './shared/types';
+import type { WebviewToExtMessage, OpenApiDoc, RequestHistoryItem } from '../../shared/src/types';
 
 const REQUEST_HISTORY_KEY = 'openapi-editor.requestHistory';
 
