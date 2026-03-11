@@ -198,9 +198,16 @@ const op = computed(() => docStore.selectedOperation);
 const method = computed(() => docStore.selectedMethod ?? 'get');
 const path = computed(() => docStore.selectedPath ?? '');
 
-if (!(!op.value || !path.value || !docStore.doc)) {
-    runStore.initInstance(toRaw(op.value), path.value, toRaw(docStore.doc));
-}
+watch(
+    [op, path, () => docStore.doc],
+    ([opVal, pathVal, docVal]) => {
+        if (opVal && pathVal && docVal) {
+            runStore.initInstance(toRaw(opVal), pathVal, toRaw(docVal));
+        }
+    },
+    { immediate: true }
+);
+
 
 // Proxy store state for convenient template access
 const params = computed(() => runStore.instanceParams);
