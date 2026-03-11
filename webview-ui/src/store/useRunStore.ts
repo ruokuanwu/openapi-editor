@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { RunResult, RunRequest, RunInstanceParam, RunInstanceBody, ParameterIn } from '../types';
+import type { RunResult, RunRequest, RunInstanceParam, RunInstanceBody, ParameterIn, SchemaObject } from '../types';
 import type { OperationObject, OpenApiDoc } from '../types';
 import { generateSchemaExample, buildFormContentFromSchema } from '../utils/requestBuilder';
+import { generateMockData } from '../utils/mockGenerator';
 
 export const useRunStore = defineStore('run', () => {
     const isOpen = ref(false);
@@ -48,16 +49,22 @@ export const useRunStore = defineStore('run', () => {
         isOpen.value = true;
     }
 
+    /** Derive a string value for a parameter: example > default > mock */
+    function mockParamValue(schema: SchemaObject | undefined, doc: OpenApiDoc): string {
+        if (!schema) { return ''; }
+        if (schema.example !== undefined && schema.example !== null) { return String(schema.example); }
+        if (schema.default !== undefined && schema.default !== null) { return String(schema.default); }
+        const mocked = generateMockData(schema, doc);
+        if (mocked === null || mocked === undefined) { return ''; }
+        if (typeof mocked === 'object') { return JSON.stringify(mocked); }
+        return String(mocked);
+    }
+
     /** Initialize run instance from operation definition (called when clicking Run button) */
     function initInstance(op: OperationObject, path: string, doc: OpenApiDoc) {
         // Build params from operation parameters
         const params: RunInstanceParam[] = (op.parameters ?? []).map((p) => {
-            let value = '';
-            if (p.schema?.example !== undefined && p.schema.example !== null) {
-                value = String(p.schema.example);
-            } else if (p.schema?.default !== undefined && p.schema.default !== null) {
-                value = String(p.schema.default);
-            }
+            const value = mockParamValue(p.schema, doc);
             return {
                 name: p.name,
                 in: p.in as ParameterIn,

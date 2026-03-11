@@ -15,6 +15,42 @@
 				"kind": "build",
 				"isDefault": true
 			}
+		},
+		{
+			"label": "watch:webview",
+			"type": "shell",
+			"command": "pnpm run watch",
+			"options": {
+				"cwd": "${workspaceFolder}/webview-ui"
+			},
+			"isBackground": true,
+			"problemMatcher": [
+				{
+					"owner": "vite",
+					"pattern": {
+						"regexp": "^$"
+					},
+					"background": {
+						"activeOnStart": true,
+						"beginsPattern": "build started",
+						"endsPattern": "built in"
+					}
+				}
+			],
+			"presentation": {
+				"reveal": "silent",
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "watch:all",
+			"dependsOn": [
+				"npm: watch",
+				"watch:webview"
+			],
+			"dependsOrder": "parallel",
+			"isBackground": true,
+			"problemMatcher": []
 		}
 	]
 }

@@ -183,6 +183,7 @@ import vscode from '../vscode';
 import type { ParameterIn } from '../types';
 
 const PARAM_LOCATIONS: ParameterIn[] = ['query', 'header', 'path', 'cookie'];
+
 const COMMON_CONTENT_TYPES = [
     'application/json',
     'application/x-www-form-urlencoded',
@@ -193,9 +194,13 @@ const COMMON_CONTENT_TYPES = [
 const docStore = useDocStore();
 const configStore = useConfigStore();
 const runStore = useRunStore();
-
+const op = computed(() => docStore.selectedOperation);
 const method = computed(() => docStore.selectedMethod ?? 'get');
 const path = computed(() => docStore.selectedPath ?? '');
+
+if (!(!op.value || !path.value || !docStore.doc)) {
+    runStore.initInstance(toRaw(op.value), path.value, toRaw(docStore.doc));
+}
 
 // Proxy store state for convenient template access
 const params = computed(() => runStore.instanceParams);

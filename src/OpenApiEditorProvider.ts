@@ -184,6 +184,8 @@ export class OpenApiEditorProvider implements vscode.CustomTextEditorProvider {
                 `script-src ${webview.cspSource}`,
                 `font-src ${webview.cspSource} data:`,
                 `img-src ${webview.cspSource} data: blob:`,
+                // 调试时使用
+                `connect-src ${webview.cspSource}`,
             ].join('; ');
 
             html = html.replace(

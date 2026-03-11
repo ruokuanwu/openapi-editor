@@ -10,6 +10,8 @@ export default defineConfig({
     build: {
         outDir: resolve(__dirname, '../out/webview'),
         emptyOutDir: true,
+        sourcemap: 'inline',
+        minify: false,
         rollupOptions: {
             output: {
                 entryFileNames: 'assets/[name].js',
