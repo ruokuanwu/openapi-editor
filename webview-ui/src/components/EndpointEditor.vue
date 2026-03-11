@@ -88,8 +88,9 @@
                 <template #label>
                     <span>运行</span>
                 </template>
-                <div class="run-tab-layout">
-                    <RunInstancePanel class="run-instance-pane" />
+                <div class="run-tab-layout" ref="runTabLayout">
+                    <RunInstancePanel class="run-instance-pane" :style="{ width: runPaneWidth + 'px' }" />
+                    <div class="run-resizer" @mousedown.prevent="onRunResizerMousedown" />
                     <RunResultPanel class="run-result-pane" />
                 </div>
             </el-tab-pane>
@@ -121,6 +122,27 @@ const configStore = useConfigStore();
 const runStore = useRunStore();
 const activeTab = ref('overview');
 const isEditing = ref(false);
+
+// Run tab resizable pane
+const runTabLayout = ref<HTMLElement | null>(null);
+const runPaneWidth = ref(380);
+
+function onRunResizerMousedown(e: MouseEvent) {
+    const startX = e.clientX;
+    const startWidth = runPaneWidth.value;
+
+    function onMouseMove(mv: MouseEvent) {
+        runPaneWidth.value = Math.min(800, Math.max(200, startWidth + (mv.clientX - startX)));
+    }
+
+    function onMouseUp() {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+}
 
 interface EditSnapshot {
     doc: typeof docStore.doc;
@@ -375,14 +397,42 @@ const methodTagType = computed((): '' | 'success' | 'warning' | 'danger' | 'info
 }
 
 .run-instance-pane {
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.run-result-pane {
     flex: 1;
     min-width: 0;
     overflow: hidden;
 }
 
-.run-result-pane {
-    width: 380px;
+.run-resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: var(--vscode-panel-border, #e4e7ed);
     flex-shrink: 0;
-    overflow: hidden;
 }
+
+.run-resizer:hover {
+    background: var(--vscode-focusBorder, #0078d4);
+}
+
+.xrun-resizer {
+    /* position: absolute; */
+
+    /* right: 0;
+    top: 0;
+    bottom: 0; */
+    width: 4px;
+    cursor: col-resize;
+    /* z-index: 10; */
+    flex-shrink: 0;
+}
+
+.xrun-resizer:hover {
+    background: var(--vscode-focusBorder, #0078d4);
+    opacity: 0.4;
+}
+
 </style>
