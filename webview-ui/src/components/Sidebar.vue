@@ -1,9 +1,20 @@
 <template>
-    <aside class="sidebar">
+    <aside class="sidebar" ref="sidebarEl" :style="{ width: sidebarWidth + 'px' }">
         <!-- API Info header -->
         <div class="api-info" v-if="docStore.doc">
             <div class="api-info-title">{{ docStore.doc.info.title }}</div>
             <div class="api-info-version">v{{ docStore.doc.info.version }}</div>
+        </div>
+
+        <!-- Search Box -->
+        <div class="sidebar-search">
+            <el-input
+                v-model="searchQuery"
+                size="small"
+                placeholder="搜索接口 / 组件..."
+                clearable
+                :prefix-icon="Search"
+            />
         </div>
 
         <!-- Scrollable list -->
@@ -32,11 +43,11 @@
                 </div>
 
                 <div v-show="!sectionCollapsed.endpoints">
-                    <div v-if="docStore.endpointGroups.length === 0" class="sidebar-empty">
-                        暂无接口
+                    <div v-if="filteredEndpointGroups.length === 0" class="sidebar-empty">
+                        {{ searchQuery ? '无匹配结果' : '暂无接口' }}
                     </div>
 
-                    <div v-for="group in docStore.endpointGroups" :key="group.tag" class="group">
+                    <div v-for="group in filteredEndpointGroups" :key="group.tag" class="group">
                         <!-- Group header -->
                         <div class="group-header" @click="toggleGroup(group.tag)">
                             <el-icon class="group-arrow">
@@ -57,6 +68,7 @@
                                     {{ ep.method.toUpperCase() }}
                                 </span>
                                 <span class="endpoint-path" :title="ep.path">{{ ep.path }}</span>
+                                <span v-if="ep.summary" class="endpoint-desc" :title="ep.summary">{{ ep.summary }}</span>
                                 <el-icon class="delete-icon" @click.stop="removeEndpoint(ep.path, ep.method)" title="删除">
                                     <Close />
                                 </el-icon>
@@ -81,7 +93,7 @@
                     <ComponentGroup
                         label="Schemas"
                         type="schemas"
-                        :names="componentNames('schemas')"
+                        :names="filteredComponentNames('schemas')"
                         :can-remove="true"
                         @add="openAddComponent('schemas')"
                         @select="(name) => selectComponentWithGuard('schemas', name)"
@@ -92,7 +104,7 @@
                     <ComponentGroup
                         label="Responses"
                         type="responses"
-                        :names="componentNames('responses')"
+                        :names="filteredComponentNames('responses')"
                         :can-remove="true"
                         @add="openAddComponent('responses')"
                         @select="(name) => selectComponentWithGuard('responses', name)"
@@ -103,7 +115,7 @@
                     <ComponentGroup
                         label="Parameters"
                         type="parameters"
-                        :names="componentNames('parameters')"
+                        :names="filteredComponentNames('parameters')"
                         :can-remove="true"
                         @add="openAddComponent('parameters')"
                         @select="(name) => selectComponentWithGuard('parameters', name)"
@@ -114,7 +126,7 @@
                     <ComponentGroup
                         label="Request Bodies"
                         type="requestBodies"
-                        :names="componentNames('requestBodies')"
+                        :names="filteredComponentNames('requestBodies')"
                         :can-remove="true"
                         @add="openAddComponent('requestBodies')"
                         @select="(name) => selectComponentWithGuard('requestBodies', name)"
@@ -125,6 +137,9 @@
             </div>
 
         </el-scrollbar>
+
+        <!-- Resizer handle -->
+        <div class="sidebar-resizer" @mousedown.prevent="onResizerMousedown" />
 
         <!-- Add Endpoint Dialog -->
         <el-dialog v-model="showAddEndpoint" title="新增接口" width="420px" :append-to-body="true">
@@ -179,7 +194,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue';
-import { Plus, Close, ArrowDown, ArrowRight, CollectionTag, Delete } from '@element-plus/icons-vue';
+import { Plus, Close, ArrowDown, ArrowRight, CollectionTag, Delete, Search } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useDocStore } from '../store/useDocStore';
 import { HTTP_METHODS } from '../types';
@@ -188,6 +203,55 @@ import type { ComponentType } from '../store/useDocStore';
 import ComponentGroup from './ComponentGroup.vue';
 
 const docStore = useDocStore();
+
+// ── Sidebar width (resizable) ─────────────────────────────────────────────────
+const sidebarEl = ref<HTMLElement | null>(null);
+const sidebarWidth = ref(240);
+
+function onResizerMousedown(e: MouseEvent) {
+    const startX = e.clientX;
+    const startWidth = sidebarWidth.value;
+
+    function onMouseMove(mv: MouseEvent) {
+        sidebarWidth.value = Math.min(480, Math.max(160, startWidth + (mv.clientX - startX)));
+    }
+
+    function onMouseUp() {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+const searchQuery = ref('');
+
+const filteredEndpointGroups = computed(() => {
+    const q = searchQuery.value.trim().toLowerCase();
+    if (!q) { return docStore.endpointGroups; }
+    return docStore.endpointGroups
+        .map((group) => ({
+            ...group,
+            endpoints: group.endpoints.filter((ep) =>
+                ep.path.toLowerCase().includes(q) ||
+                (ep.summary ?? '').toLowerCase().includes(q)
+            ),
+        }))
+        .filter((group) => group.endpoints.length > 0);
+});
+
+function filteredComponentNames(type: ComponentType): string[] {
+    const q = searchQuery.value.trim().toLowerCase();
+    const names = componentNames(type);
+    if (!q) { return names; }
+    return names.filter((name) => {
+        if (name.toLowerCase().includes(q)) { return true; }
+        const section = docStore.doc?.components?.[type] as Record<string, { summary?: string }> | undefined;
+        return (section?.[name]?.summary ?? '').toLowerCase().includes(q);
+    });
+}
 
 // ── Section collapse ─────────────────────────────────────────────────────────
 const sectionCollapsed = reactive<Record<string, boolean>>({
@@ -320,19 +384,27 @@ function confirmAddComponent() {
 
 <style scoped>
 .sidebar {
-    width: 240px;
-    min-width: 200px;
+    min-width: 160px;
+    max-width: 480px;
     display: flex;
     flex-direction: column;
     border-right: 1px solid var(--vscode-panel-border, #e4e7ed);
     background: var(--vscode-sideBar-background, #f8f9fa);
     flex-shrink: 0;
     overflow: hidden;
+    position: relative;
 }
 
 .api-info {
     padding: 10px 12px 8px;
     border-bottom: 1px solid var(--vscode-panel-border, #e4e7ed);
+}
+
+/* ── Search ── */
+.sidebar-search {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, #e4e7ed);
+    flex-shrink: 0;
 }
 
 .api-info-title {
@@ -398,7 +470,6 @@ function confirmAddComponent() {
     display: flex;
     gap: 4px;
     opacity: 0;
-    transition: opacity 0.15s;
 }
 
 .section-header:hover .section-actions {
@@ -480,10 +551,22 @@ function confirmAddComponent() {
 }
 
 .endpoint-path {
-    flex: 1;
+    flex: 0 1 auto;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.endpoint-desc {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    opacity: 0.5;
+    padding-left: 2px;
 }
 
 .delete-icon {
@@ -500,6 +583,22 @@ function confirmAddComponent() {
 .endpoint-item:hover .delete-icon:hover {
     opacity: 1;
     color: #f93e3e;
+}
+
+/* ── Resizer ── */
+.sidebar-resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    z-index: 10;
+}
+
+.sidebar-resizer:hover {
+    background: var(--vscode-focusBorder, #0078d4);
+    opacity: 0.4;
 }
 </style>
 

@@ -51,7 +51,7 @@
 
                 <!-- View mode: human-friendly read-only panel -->
                 <div v-if="!isEditing" class="view-content">
-                    <EndpointViewPanel :operation="operation" />
+                    <EndpointViewPanel :key="docStore.selectedPath + ':' + docStore.selectedMethod" :operation="operation" />
                 </div>
 
                 <!-- Edit mode: inner tabs -->

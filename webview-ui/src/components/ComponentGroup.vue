@@ -101,7 +101,6 @@ const collapsed = ref(false);
     display: flex;
     gap: 2px;
     opacity: 0;
-    transition: opacity 0.15s;
 }
 
 .comp-group-header:hover .comp-actions {

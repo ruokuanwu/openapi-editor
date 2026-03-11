@@ -313,6 +313,17 @@ html.dark .el-empty__description p {
     color: #6c7086 !important;
 }
 
+/* Disable Element Plus table row enter/leave animation */
+.el-list-enter-active,
+.el-list-leave-active {
+    transition: none !important;
+}
+.el-list-enter-from,
+.el-list-leave-to {
+    opacity: 1 !important;
+    transform: none !important;
+}
+
 html.dark .el-table {
     background-color: #1e1e2e !important;
     color: #cdd6f4 !important;

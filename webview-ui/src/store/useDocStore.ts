@@ -19,6 +19,7 @@ export interface EndpointItem {
     path: string;
     method: HttpMethod;
     summary?: string;
+    description?: string;
     tags: string[];
     deprecated?: boolean;
 }
@@ -56,6 +57,7 @@ export const useDocStore = defineStore('doc', () => {
                     path,
                     method,
                     summary: op.summary,
+                    description: op.description,
                     tags: op.tags ?? [],
                     deprecated: op.deprecated,
                 };
