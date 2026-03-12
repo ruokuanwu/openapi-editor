@@ -1,6 +1,7 @@
 import type { OperationObject, OpenApiDoc, SchemaObject } from '../types';
 import type { useConfigStore } from '../store/useConfigStore';
 import type { RunRequest, RunInstanceParam, RunInstanceBody } from '../types';
+import { isReferenceObject, resolveSchema, resolveParameter, resolveRequestBody } from './resolve';
 
 type ConfigStore = ReturnType<typeof useConfigStore>;
 
@@ -20,13 +21,13 @@ function resolveRef(ref: string, doc: OpenApiDoc): SchemaObject | undefined {
     return doc.components?.schemas?.[name];
 }
 
-/** Resolve schema (following $ref if needed) */
-function resolveSchema(schema: SchemaObject, doc: OpenApiDoc): SchemaObject {
-    if (schema.$ref) {
-        return resolveRef(schema.$ref, doc) ?? schema;
-    }
-    return schema;
-}
+// /** Resolve schema (following $ref if needed) */
+// function resolveSchema(schema: SchemaObject, doc: OpenApiDoc): SchemaObject {
+//     if (isReferenceObject(schema)) {
+//         return resolveRef(schema.$ref, doc) ?? schema;
+//     }
+//     return schema;
+// }
 
 /**
  * Recursively generate a skeleton JSON value (JavaScript object/primitive) from a schema.
@@ -36,6 +37,7 @@ function generateSchemaValue(schema: SchemaObject, doc: OpenApiDoc, depth = 0): 
     if (depth > 5) { return null; } // prevent infinite recursion
 
     const resolved = resolveSchema(schema, doc);
+    if (resolved === undefined) { return null; }
 
     if (resolved.example !== undefined) { return resolved.example; }
     if (resolved.default !== undefined) { return resolved.default; }
@@ -73,9 +75,10 @@ export function generateSchemaExample(schema: SchemaObject, doc: OpenApiDoc): st
  */
 export function buildFormContentFromSchema(schema: SchemaObject, doc: OpenApiDoc): Record<string, string> {
     const resolved = resolveSchema(schema, doc);
+    if (resolved === undefined) { return {}; }
     const result: Record<string, string> = {};
     for (const [key, prop] of Object.entries(resolved.properties ?? {})) {
-        const val = schemaValue(prop);
+        const val = schemaValue(resolveSchema(prop, doc));
         result[key] = val ?? '';
     }
     return result;
@@ -98,19 +101,29 @@ export function buildRunRequest(
 
     // ── Resolve path params ───────────────────────────────────────────────────
     let resolvedPath = path;
-    const pathParams = (operation.parameters ?? []).filter((p) => p.in === 'path');
+    const pathParams = (operation.parameters ?? []).filter((p) => {
+        const _p = resolveParameter(doc, p);
+        return _p?.in === 'path';
+    });
     for (const p of pathParams) {
-        const v = schemaValue(p.schema);
-        resolvedPath = resolvedPath.replace(`{${p.name}}`, v ?? `{${p.name}}`);
+        const _p = resolveParameter(doc, p)!;
+        const s = resolveSchema(doc, _p?.schema);
+        const v = schemaValue(s);
+        resolvedPath = resolvedPath.replace(`{${_p.name}}`, v ?? `{${_p.name}}`);
     }
 
     // ── Query string ──────────────────────────────────────────────────────────
-    const queryParams = (operation.parameters ?? []).filter((p) => p.in === 'query');
+    const queryParams = (operation.parameters ?? []).filter((p) => {
+        const _p = resolveParameter(doc, p);
+        return _p?.in === 'query';
+    });
     const queryParts: string[] = [];
     for (const p of queryParams) {
-        const v = schemaValue(p.schema);
+        const _p = resolveParameter(doc, p)!;
+        const s = resolveSchema(doc, _p?.schema);
+        const v = schemaValue(s);
         if (v !== undefined) {
-            queryParts.push(`${encodeURIComponent(p.name)}=${encodeURIComponent(v)}`);
+            queryParts.push(`${encodeURIComponent(_p.name)}=${encodeURIComponent(v)}`);
         }
     }
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
@@ -121,11 +134,16 @@ export function buildRunRequest(
     const headers: Record<string, string> = {};
 
     // header params from operation
-    const headerParams = (operation.parameters ?? []).filter((p) => p.in === 'header');
+    const headerParams = (operation.parameters ?? []).filter((p) => {
+        const _p = resolveParameter(doc, p);
+        return _p?.in === 'header';
+    });
     for (const p of headerParams) {
-        const v = schemaValue(p.schema);
+        const _p = resolveParameter(doc, p)!;
+        const s = resolveSchema(doc, _p?.schema);
+        const v = schemaValue(s);
         if (v !== undefined) {
-            headers[p.name] = v;
+            headers[_p.name] = v;
         }
     }
 
@@ -144,15 +162,17 @@ export function buildRunRequest(
 
     // ── Body ──────────────────────────────────────────────────────────────────
     let body: string | undefined;
-    if (operation.requestBody?.content) {
-        const contentTypes = Object.keys(operation.requestBody.content);
+    const requestBody = resolveRequestBody(doc, operation.requestBody);
+    if (requestBody?.content) {
+        const contentTypes = Object.keys(requestBody.content);
         if (contentTypes.length > 0) {
             const firstContentType = contentTypes[0];
-            const mediaType = operation.requestBody.content[firstContentType];
-            if (mediaType.schema?.example !== undefined) {
-                body = typeof mediaType.schema.example === 'string'
-                    ? mediaType.schema.example
-                    : JSON.stringify(mediaType.schema.example, null, 2);
+            const mediaType = requestBody.content[firstContentType];
+            const s = mediaType?.schema ? resolveSchema(mediaType.schema, doc) : undefined;
+            if (s !== undefined) {
+                body = typeof s === 'string'
+                    ? s
+                    : JSON.stringify(s, null, 2);
             } else if (mediaType.example !== undefined) {
                 body = typeof mediaType.example === 'string'
                     ? mediaType.example

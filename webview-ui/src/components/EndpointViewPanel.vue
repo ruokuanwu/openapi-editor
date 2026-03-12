@@ -59,7 +59,7 @@
             <div class="section-header">
                 <div class="section-bar" />
                 <span class="section-title">请求体</span>
-                <el-tag v-if="operation.requestBody?.required" size="small" type="danger" class="section-tag">必填</el-tag>
+                <el-tag v-if="resolveRequestBody(_doc,operation.requestBody)?.required" size="small" type="danger" class="section-tag">必填</el-tag>
             </div>
             <div v-if="operation.requestBody?.description" class="section-desc">{{ operation.requestBody.description }}</div>
 
@@ -100,8 +100,8 @@
                         </template>
 
                         <div class="response-body">
-                            <template v-for="ct in Object.keys(resp.content ?? {})" :key="ct">
-                                <div v-if="resp.content![ct]?.schema" class="schema-view-card">
+                            <template v-for="ct in Object.keys(resolveResponse(_doc,resp)?.content ?? {})" :key="ct">
+                                <div v-if="resolveResponse(_doc,resp)?.content![ct]?.schema" class="schema-view-card">
                                     <div class="schema-view-header">
                                         <el-tag size="small">{{ ct }}</el-tag>
                                         <el-button-group size="small" class="schema-view-actions">
@@ -112,13 +112,13 @@
                                         </el-button-group>
                                     </div>
                                     <div class="schema-view-body">
-                                        <SchemaEditor v-if="getRespMode(String(code), ct) === 'visual'" :schema="resp.content![ct].schema!" :readonly="true" :level="0" />
-                                        <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(resp.content![ct].schema!, docStore.doc), null, 2) }}</pre>
+                                        <SchemaEditor v-if="getRespMode(String(code), ct) === 'visual'" :schema="resolveResponse(_doc,resp)?.content![ct].schema!" :readonly="true" :level="0" />
+                                        <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(resolveResponse(_doc,resp)?.content![ct].schema!, docStore.doc), null, 2) }}</pre>
                                     </div>
                                 </div>
                             </template>
 
-                            <div v-if="!resp.content || !Object.keys(resp.content).length" class="no-content">
+                            <div v-if="!resolveResponse(_doc,resp)?.content || !Object.keys(resolveResponse(_doc,resp)?.content?? {}).length" class="no-content">
                                 无响应体
                             </div>
                         </div>
@@ -140,26 +140,29 @@ import { useDocStore } from '../store/useDocStore';
 import type { OperationObject, SchemaObject } from '../types';
 import { generateMockData } from '../utils/mockGenerator';
 import SchemaEditor from './SchemaEditor.vue';
+import { resolveRequestBody,resolveResponse} from '../utils/resolve';
 
 const props = defineProps<{
     operation: OperationObject;
 }>();
 
 const docStore = useDocStore();
+const _doc = computed(() => docStore.doc);
+
 
 const operation = computed(() => props.operation);
 
 const hasRequestBody = computed(() => {
     const rb = operation.value.requestBody;
-    return rb && Object.keys(rb.content ?? {}).length > 0;
+    return rb && Object.keys(resolveRequestBody(_doc,rb)?.content ?? {}).length > 0;
 });
 
 const requestBodyContentTypes = computed((): string[] => {
-    return Object.keys(operation.value.requestBody?.content ?? {});
+    return Object.keys(resolveRequestBody(_doc,operation.value.requestBody)?.content ?? {});
 });
 
 function requestBodySchema(ct: string): SchemaObject | null {
-    return operation.value.requestBody?.content?.[ct]?.schema ?? null;
+    return resolveRequestBody(_doc,operation.value.requestBody)?.content?.[ct]?.schema ?? null;
 }
 
 function paramTagType(loc: string): '' | 'success' | 'warning' | 'danger' | 'info' {

@@ -3,7 +3,8 @@
         <template v-if="op && requestBody">
             <!-- Required toggle -->
             <el-form-item label="必填" label-width="60px">
-                <el-switch v-model="requestBody!.required" :active-value="true" :inactive-value="false" />
+                <el-switch v-model="resolveRequestBody(_doc, requestBody)!.required" :active-value="true"
+                    :inactive-value="false" />
             </el-form-item>
 
             <!-- Description -->
@@ -39,12 +40,14 @@
                             <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small"
                                 @click="schemaViewMode = 'json'">JSON</el-button>
                         </el-button-group>
-                        <el-tooltip :content="activeSchema.$ref ? '更换引用组件' : '引用组件'" placement="top" :show-after="500">
+                        <el-tooltip :content="isReferenceObject(activeSchema) ? '更换引用组件' : '引用组件'" placement="top"
+                            :show-after="500">
                             <el-button size="small" text :icon="Link" @click="openRefPicker">
-                                {{ activeSchema.$ref ? '更换组件' : '引用组件' }}
+                                {{ isReferenceObject(activeSchema) ? '更换组件' : '引用组件' }}
                             </el-button>
                         </el-tooltip>
-                        <el-tooltip v-if="activeSchema.$ref" content="解除引用（内联展开）" placement="top" :show-after="500">
+                        <el-tooltip v-if="isReferenceObject(activeSchema)" content="解除引用（内联展开）" placement="top"
+                            :show-after="500">
                             <el-button size="small" text :icon="DocumentCopy" @click="derefActiveSchema" />
                         </el-tooltip>
                     </div>
@@ -52,7 +55,8 @@
                 <template v-if="schemaViewMode === 'visual'">
                     <SchemaEditor :schema="activeSchema" />
                 </template>
-                <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(activeSchema, docStore.doc), null, 2) }}</pre>
+                <pre v-else
+                    class="mock-json">{{ JSON.stringify(generateMockData(activeSchema, docStore.doc), null, 2) }}</pre>
             </div>
             <div v-else class="no-body">该 Content-Type 暂无 Schema</div>
         </template>
@@ -77,8 +81,8 @@
         <!-- Ref Picker dialog -->
         <el-dialog v-model="showRefPicker" title="选择引用组件" width="400px" :append-to-body="true">
             <el-select v-model="pickedRef" filterable placeholder="搜索 Schema 名称" style="width: 100%">
-                <el-option v-for="name in docStore.allSchemaNames" :key="name"
-                    :label="name" :value="'#/components/schemas/' + name" />
+                <el-option v-for="name in docStore.allSchemaNames" :key="name" :label="name"
+                    :value="'#/components/schemas/' + name" />
             </el-select>
             <template #footer>
                 <el-button @click="showRefPicker = false">取消</el-button>
@@ -95,6 +99,9 @@ import { useDocStore } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
 import type { SchemaObject } from '../types';
 import { generateMockData } from '../utils/mockGenerator';
+import { resolveRequestBody } from '../utils/resolve';
+import { RequestBodyObject } from '../types';
+import { resolveSchema, isReferenceObject } from '../utils/resolve';
 
 const COMMON_CONTENT_TYPES = [
     'application/json',
@@ -104,6 +111,7 @@ const COMMON_CONTENT_TYPES = [
 ];
 
 const docStore = useDocStore();
+const _doc = computed(() => docStore.doc);
 
 const op = computed(() => docStore.selectedOperation);
 
@@ -117,7 +125,8 @@ const requestBody = computed(() => {
 
 const contentTypes = computed((): string[] => {
     if (!requestBody.value) { return []; }
-    return Object.keys(requestBody.value.content);
+    const rb = resolveRequestBody(_doc.value, requestBody.value)!;
+    return Object.keys(rb.content);
 });
 
 const activeContentType = ref('application/json');
@@ -126,7 +135,8 @@ watch(activeContentType, () => { schemaViewMode.value = 'visual'; });
 
 const activeSchema = computed((): SchemaObject | null => {
     if (!requestBody.value || !activeContentType.value) { return null; }
-    const mediaType = requestBody.value.content[activeContentType.value];
+    const rb = resolveRequestBody(_doc.value, requestBody.value)!;
+    const mediaType = rb.content[activeContentType.value];
     if (!mediaType) { return null; }
     if (!mediaType.schema) { mediaType.schema = { type: 'object', properties: {} }; }
     return mediaType.schema;
@@ -140,8 +150,9 @@ const customContentType = ref('');
 function confirmAddContentType() {
     const ct = customContentType.value.trim() || newContentType.value;
     if (!ct || !requestBody.value) { return; }
-    if (!requestBody.value.content[ct]) {
-        requestBody.value.content[ct] = { schema: { type: 'object', properties: {} } };
+    const rb = resolveRequestBody(_doc.value, requestBody.value)!;
+    if (!rb.content[ct]) {
+        rb.content[ct] = { schema: { type: 'object', properties: {} } };
     }
     activeContentType.value = ct;
     customContentType.value = '';
@@ -150,7 +161,8 @@ function confirmAddContentType() {
 
 function removeContentType() {
     if (!requestBody.value || !activeContentType.value) { return; }
-    delete requestBody.value.content[activeContentType.value];
+    let rb = resolveRequestBody(_doc.value, requestBody.value)!;
+    delete rb.content[activeContentType.value];
     activeContentType.value = contentTypes.value[0] ?? '';
 }
 
@@ -159,7 +171,11 @@ const showRefPicker = ref(false);
 const pickedRef = ref('');
 
 function openRefPicker() {
-    pickedRef.value = activeSchema.value?.$ref ?? '';
+    if (isReferenceObject(activeSchema.value)) {
+        pickedRef.value = activeSchema.value?.$ref
+    } else {
+        pickedRef.value = '';
+    }
     showRefPicker.value = true;
 }
 
@@ -168,7 +184,8 @@ function applyRefPick() {
         showRefPicker.value = false;
         return;
     }
-    const mediaType = requestBody.value.content[activeContentType.value];
+    const rb = resolveRequestBody(_doc.value, requestBody.value)!;
+    const mediaType = rb.content[activeContentType.value];
     if (!mediaType) { return; }
     mediaType.schema = { $ref: pickedRef.value };
     showRefPicker.value = false;
@@ -176,14 +193,17 @@ function applyRefPick() {
 
 function derefActiveSchema() {
     const schema = activeSchema.value;
-    if (!schema?.$ref) { return; }
+    if (!isReferenceObject(schema)) { return; }
     const name = schema.$ref.match(/^#\/components\/schemas\/(.+)$/)?.[1];
     if (!name) { return; }
     const resolved = docStore.doc?.components?.schemas?.[name];
     if (!resolved) { return; }
     const copy = JSON.parse(JSON.stringify(resolved)) as SchemaObject;
-    const mediaType = requestBody.value?.content[activeContentType.value];
-    if (mediaType) { mediaType.schema = copy; }
+    if (requestBody.value != null) {
+        const rb = resolveRequestBody(_doc.value, requestBody.value);
+        const mediaType = rb?.content[activeContentType.value];
+        if (mediaType) { mediaType.schema = copy; }
+    }
 }
 </script>
 

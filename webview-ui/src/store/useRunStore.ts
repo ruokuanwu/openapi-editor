@@ -4,6 +4,7 @@ import type { RunResult, RunRequest, RunInstanceParam, RunInstanceBody, Paramete
 import type { OperationObject, OpenApiDoc } from '../types';
 import { generateSchemaExample, buildFormContentFromSchema } from '../utils/requestBuilder';
 import { generateMockData } from '../utils/mockGenerator';
+import { resolveSchema, resolveParameter, resolveRequestBody } from '../utils/resolve';
 
 export const useRunStore = defineStore('run', () => {
     const isOpen = ref(false);
@@ -64,11 +65,13 @@ export const useRunStore = defineStore('run', () => {
     function initInstance(op: OperationObject, path: string, doc: OpenApiDoc) {
         // Build params from operation parameters
         const params: RunInstanceParam[] = (op.parameters ?? []).map((p) => {
-            const value = mockParamValue(p.schema, doc);
+            const _p = resolveParameter(doc, p)!;
+            const s = resolveSchema(doc, _p.schema);
+            const value = mockParamValue(s, doc);
             return {
-                name: p.name,
-                in: p.in as ParameterIn,
-                required: p.required ?? false,
+                name: _p.name,
+                in: _p.in as ParameterIn,
+                required: _p.required ?? false,
                 description: p.description ?? '',
                 value,
                 isCustom: false,
@@ -77,10 +80,11 @@ export const useRunStore = defineStore('run', () => {
         instanceParams.value = params;
 
         // Build body from operation requestBody
-        if (op.requestBody?.content) {
-            const contentTypes = Object.keys(op.requestBody.content);
+        const requestBody = resolveRequestBody(doc, op.requestBody);
+        if (requestBody?.content) {
+            const contentTypes = Object.keys(requestBody.content);
             const firstCt = contentTypes[0] ?? 'application/json';
-            const mediaType = op.requestBody.content[firstCt];
+            const mediaType = requestBody.content[firstCt];
             const schema = mediaType?.schema;
 
             const textContent = schema ? generateSchemaExample(schema, doc) : '';

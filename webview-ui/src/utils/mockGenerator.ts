@@ -1,4 +1,5 @@
 import type { SchemaObject, OpenApiDoc } from '../types';
+import { isReferenceObject } from './resolve';
 
 const MAX_DEPTH = 5;
 
@@ -16,7 +17,7 @@ export function generateMockData(
     if (depth >= MAX_DEPTH) { return null; }
 
     // Resolve $ref first
-    if (schema.$ref) {
+    if (isReferenceObject(schema)) {
         const name = schema.$ref.match(/^#\/components\/schemas\/(.+)$/)?.[1];
         if (!name) { return null; }
         if (visited.has(name)) { return {}; }

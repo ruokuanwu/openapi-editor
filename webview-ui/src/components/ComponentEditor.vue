@@ -3,15 +3,8 @@
         <!-- Header -->
         <div class="comp-header">
             <el-tag class="comp-type-badge" :type="typeBadgeType" size="small">{{ typeLabel }}</el-tag>
-            <el-input
-                v-model="localName"
-                class="comp-name-input"
-                size="large"
-                :disabled="!isEditing"
-                @blur="handleRename"
-                @keydown.enter="($event.target as HTMLInputElement).blur()"
-                placeholder="组件名称"
-            />
+            <el-input v-model="localName" class="comp-name-input" size="large" :disabled="!isEditing"
+                @blur="handleRename" @keydown.enter="($event.target as HTMLInputElement).blur()" placeholder="组件名称" />
             <el-button v-if="!isEditing" type="primary" size="small" @click="startEditing">编辑</el-button>
             <template v-else>
                 <el-button type="success" size="small" @click="saveAndExit">保存</el-button>
@@ -23,93 +16,98 @@
 
         <div class="comp-edit-body" :class="{ 'is-readonly': !isEditing }">
 
-        <!-- Schema metadata (only for schemas type) -->
-        <template v-if="docStore.selectedComponentType === 'schemas' && schemaValue">
-            <el-form label-width="80px" label-position="left" size="small" class="meta-form">
-                <el-form-item label="标题">
-                    <el-input v-model="(schemaValue as SchemaObject).title" placeholder="Schema 标题" />
-                </el-form-item>
-                <el-form-item label="描述">
-                    <el-input v-model="(schemaValue as SchemaObject).description" type="textarea" :rows="2" placeholder="Schema 描述" />
-                </el-form-item>
-                <el-form-item label="示例">
-                    <el-input
-                        v-model="exampleText"
-                        type="textarea"
-                        :rows="3"
-                        placeholder='{"key": "value"}'
-                        @blur="applyExample"
-                    />
-                    <div v-if="exampleError" class="example-error">{{ exampleError }}</div>
-                </el-form-item>
-            </el-form>
-            <el-divider style="margin: 8px 0" />
-            <div class="schema-title-row">
-                <span class="schema-title">Schema 定义</span>
-                <el-button-group size="small">
-                    <el-button :type="schemaViewMode === 'visual' ? 'primary' : ''" size="small" @click="schemaViewMode = 'visual'">表格</el-button>
-                    <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small" @click="schemaViewMode = 'json'">JSON</el-button>
-                </el-button-group>
-            </div>
-            <SchemaEditor v-if="schemaViewMode === 'visual'" :schema="schemaValue as SchemaObject" :readonly="!isEditing" />
-            <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(schemaValue as SchemaObject, docStore.doc), null, 2) }}</pre>
-        </template>
+            <!-- Schema metadata (only for schemas type) -->
+            <template v-if="docStore.selectedComponentType === 'schemas' && schemaValue">
+                <el-form label-width="80px" label-position="left" size="small" class="meta-form">
+                    <el-form-item label="标题">
+                        <el-input v-model="(schemaValue as SchemaObject).title" placeholder="Schema 标题" />
+                    </el-form-item>
+                    <el-form-item label="描述">
+                        <el-input v-model="(schemaValue as SchemaObject).description" type="textarea" :rows="2"
+                            placeholder="Schema 描述" />
+                    </el-form-item>
+                    <el-form-item label="示例">
+                        <el-input v-model="exampleText" type="textarea" :rows="3" placeholder='{"key": "value"}'
+                            @blur="applyExample" />
+                        <div v-if="exampleError" class="example-error">{{ exampleError }}</div>
+                    </el-form-item>
+                </el-form>
+                <el-divider style="margin: 8px 0" />
+                <div class="schema-title-row">
+                    <span class="schema-title">Schema 定义</span>
+                    <el-button-group size="small">
+                        <el-button :type="schemaViewMode === 'visual' ? 'primary' : ''" size="small"
+                            @click="schemaViewMode = 'visual'">表格</el-button>
+                        <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small"
+                            @click="schemaViewMode = 'json'">JSON</el-button>
+                    </el-button-group>
+                </div>
+                <SchemaEditor v-if="schemaViewMode === 'visual'" :schema="schemaValue as SchemaObject"
+                    :readonly="!isEditing" />
+                <pre v-else
+                    class="mock-json">{{ JSON.stringify(generateMockData(schemaValue as SchemaObject, docStore.doc), null, 2) }}</pre>
+            </template>
 
-        <!-- Response editor -->
-        <template v-else-if="docStore.selectedComponentType === 'responses' && responseValue">
-            <el-form label-width="80px" label-position="left" size="small" class="meta-form">
-                <el-form-item label="描述">
-                    <el-input v-model="(responseValue as ResponseObject).description" placeholder="响应说明" />
-                </el-form-item>
-            </el-form>
-            <el-divider style="margin: 8px 0" />
-            <div class="schema-title">响应内容</div>
-            <ResponseBodyEditor :response="responseValue as ResponseObject" />
-        </template>
+            <!-- Response editor -->
+            <template v-else-if="docStore.selectedComponentType === 'responses' && responseValue">
+                <el-form label-width="80px" label-position="left" size="small" class="meta-form">
+                    <el-form-item label="描述">
+                        <el-input v-model="(responseValue as ResponseObject).description" placeholder="响应说明" />
+                    </el-form-item>
+                </el-form>
+                <el-divider style="margin: 8px 0" />
+                <div class="schema-title">响应内容</div>
+                <ResponseBodyEditor :response="responseValue as ResponseObject" />
+            </template>
 
-        <!-- Parameter editor -->
-        <template v-else-if="docStore.selectedComponentType === 'parameters' && paramValue">
-            <el-form label-width="80px" label-position="left" size="small" class="meta-form">
-                <el-form-item label="参数名">
-                    <el-input v-model="(paramValue as ParameterObject).name" placeholder="参数名" />
-                </el-form-item>
-                <el-form-item label="位置">
-                    <el-select v-model="(paramValue as ParameterObject).in" style="width: 140px">
-                        <el-option v-for="p in ['path','query','header','cookie']" :key="p" :label="p" :value="p" />
-                    </el-select>
-                </el-form-item>
-                <el-form-item label="必填">
-                    <el-switch v-model="(paramValue as ParameterObject).required" />
-                </el-form-item>
-                <el-form-item label="描述">
-                    <el-input v-model="(paramValue as ParameterObject).description" placeholder="参数说明" />
-                </el-form-item>
-            </el-form>
-            <el-divider style="margin: 8px 0" />
-            <div class="schema-title-row">
-                <span class="schema-title">Schema</span>
-                <el-button-group size="small">
-                    <el-button :type="paramViewMode === 'visual' ? 'primary' : ''" size="small" @click="paramViewMode = 'visual'">表格</el-button>
-                    <el-button :type="paramViewMode === 'json' ? 'primary' : ''" size="small" @click="paramViewMode = 'json'">JSON</el-button>
-                </el-button-group>
-            </div>
-            <SchemaEditor v-if="paramViewMode === 'visual' && ensureParamSchema(paramValue as ParameterObject)" :schema="(paramValue as ParameterObject).schema!" :readonly="!isEditing" />
-            <pre v-else-if="paramViewMode === 'json' && ensureParamSchema(paramValue as ParameterObject)" class="mock-json">{{ JSON.stringify(generateMockData((paramValue as ParameterObject).schema!, docStore.doc), null, 2) }}</pre>
-        </template>
+            <!-- Parameter editor -->
+            <template v-else-if="docStore.selectedComponentType === 'parameters' && paramValue">
+                <el-form label-width="80px" label-position="left" size="small" class="meta-form">
+                    <el-form-item label="参数名">
+                        <el-input v-model="(paramValue as ParameterObject).name" placeholder="参数名" />
+                    </el-form-item>
+                    <el-form-item label="位置">
+                        <el-select v-model="(paramValue as ParameterObject).in" style="width: 140px">
+                            <el-option v-for="p in ['path', 'query', 'header', 'cookie']" :key="p" :label="p"
+                                :value="p" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="必填">
+                        <el-switch v-model="(paramValue as ParameterObject).required" />
+                    </el-form-item>
+                    <el-form-item label="描述">
+                        <el-input v-model="(paramValue as ParameterObject).description" placeholder="参数说明" />
+                    </el-form-item>
+                </el-form>
+                <el-divider style="margin: 8px 0" />
+                <div class="schema-title-row">
+                    <span class="schema-title">Schema</span>
+                    <el-button-group size="small">
+                        <el-button :type="paramViewMode === 'visual' ? 'primary' : ''" size="small"
+                            @click="paramViewMode = 'visual'">表格</el-button>
+                        <el-button :type="paramViewMode === 'json' ? 'primary' : ''" size="small"
+                            @click="paramViewMode = 'json'">JSON</el-button>
+                    </el-button-group>
+                </div>
+                <SchemaEditor v-if="paramViewMode === 'visual' && ensureParamSchema(paramValue)"
+                    :schema="resolveSchema(_doc, resolveParameter(_doc, paramValue)?.schema)!" :readonly="!isEditing" />
+                <pre v-else-if="paramViewMode === 'json' && ensureParamSchema(paramValue as ParameterObject)"
+                    class="mock-json">{{ JSON.stringify(generateMockData(resolveSchema(_doc, paramValue.schema!), docStore.doc), null, 2) }}</pre>
+            </template>
 
-        <!-- RequestBody editor -->
-        <template v-else-if="docStore.selectedComponentType === 'requestBodies' && reqBodyValue">
-            <el-form label-width="80px" label-position="left" size="small" class="meta-form">
-                <el-form-item label="必填">
-                    <el-switch v-model="(reqBodyValue as RequestBodyObject).required" />
-                </el-form-item>
-                <el-form-item label="描述">
-                    <el-input v-model="(reqBodyValue as RequestBodyObject).description" placeholder="请求体说明" />
-                </el-form-item>
-            </el-form>
-            <el-divider style="margin: 8px 0" />
-            <RequestBodyContentEditor :request-body="reqBodyValue as RequestBodyObject" />
-        </template>
+            <!-- RequestBody editor -->
+            <template v-else-if="docStore.selectedComponentType === 'requestBodies' && reqBodyValue">
+                <el-form label-width="80px" label-position="left" size="small" class="meta-form">
+                    <el-form-item label="必填">
+                        <el-switch v-model="(reqBodyValue as RequestBodyObject).required" />
+                    </el-form-item>
+                    <el-form-item label="描述">
+                        <el-input v-model="(reqBodyValue as RequestBodyObject).description" placeholder="请求体说明" />
+                    </el-form-item>
+                </el-form>
+                <el-divider style="margin: 8px 0" />
+                <RequestBodyContentEditor :request-body="reqBodyValue as RequestBodyObject" />
+            </template>
         </div>
     </div>
 
@@ -128,8 +126,12 @@ import RequestBodyContentEditor from './RequestBodyContentEditor.vue';
 import type { OpenApiDoc, SchemaObject, ResponseObject, ParameterObject, RequestBodyObject } from '../types';
 import { generateMockData } from '../utils/mockGenerator';
 import vscode from '../vscode';
+import { resolveParameter, resolveSchema } from '../utils/resolve';
 
 const docStore = useDocStore();
+const _doc = computed(() => docStore.doc);
+
+
 
 // ── Local name (for rename) ──────────────────────────────────────────────────
 const localName = ref(docStore.selectedComponentName ?? '');
@@ -245,17 +247,18 @@ const typeBadgeType = computed((): '' | 'success' | 'warning' | 'danger' | 'info
 
 // ── value shortcuts ──────────────────────────────────────────────────────────
 const schemaValue = computed(() =>
-    docStore.selectedComponentType === 'schemas' ? docStore.selectedComponent : null
+    docStore.selectedComponentType === 'schemas' ? (docStore.selectedComponent as SchemaObject) : undefined
 );
 const responseValue = computed(() =>
-    docStore.selectedComponentType === 'responses' ? docStore.selectedComponent : null
+    docStore.selectedComponentType === 'responses' ? (docStore.selectedComponent as ResponseObject) : undefined
 );
 const paramValue = computed(() =>
-    docStore.selectedComponentType === 'parameters' ? docStore.selectedComponent : null
+    docStore.selectedComponentType === 'parameters' ? (docStore.selectedComponent as ParameterObject) : undefined
 );
 const reqBodyValue = computed(() =>
-    docStore.selectedComponentType === 'requestBodies' ? docStore.selectedComponent : null
+    docStore.selectedComponentType === 'requestBodies' ? (docStore.selectedComponent as RequestBodyObject) : undefined
 );
+
 
 // ── Example JSON editing ─────────────────────────────────────────────────────
 const exampleText = ref('');

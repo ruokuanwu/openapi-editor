@@ -181,6 +181,7 @@ import { buildRunRequestFromInstance } from '../utils/requestBuilder';
 import { buildCurl } from '../utils/exportUtils';
 import vscode from '../vscode';
 import type { ParameterIn } from '../types';
+import { resolveRequestBody,resolveSchema } from '../utils/resolve';
 
 const PARAM_LOCATIONS: ParameterIn[] = ['query', 'header', 'path', 'cookie'];
 
@@ -192,6 +193,7 @@ const COMMON_CONTENT_TYPES = [
 ];
 
 const docStore = useDocStore();
+const _doc = computed(() => docStore.doc);
 const configStore = useConfigStore();
 const runStore = useRunStore();
 const op = computed(() => docStore.selectedOperation);
@@ -245,7 +247,8 @@ const bodyEditorMode = computed({
 // Available content types (from schema definition + current selection)
 const availableContentTypes = computed(() => {
     const op = docStore.selectedOperation;
-    const ctFromOp = op?.requestBody?.content ? Object.keys(op.requestBody.content) : [];
+    const requestBody = resolveRequestBody(_doc, op?.requestBody);
+    const ctFromOp = requestBody?.content ? Object.keys(requestBody.content) : [];
     const combined = [...new Set([...ctFromOp, ...COMMON_CONTENT_TYPES])];
     return combined;
 });
@@ -255,10 +258,11 @@ interface FormRow { key: string; value: string; isCustom: boolean }
 
 const schemaKeys = computed(() => {
     const op = docStore.selectedOperation;
-    if (!body.value || !op?.requestBody?.content) { return new Set<string>(); }
-    const media = op.requestBody.content[body.value.contentType]
-        ?? Object.values(op.requestBody.content)[0];
-    const schema = media?.schema;
+    const requestBody = resolveRequestBody(_doc, op?.requestBody);
+    if (!body.value || !requestBody?.content) { return new Set<string>(); }
+    const media = requestBody.content[body.value.contentType]
+        ?? Object.values(requestBody.content)[0];
+    const schema = resolveSchema(_doc,media?.schema);
     if (!schema?.properties) { return new Set<string>(); }
     return new Set(Object.keys(schema.properties));
 });

@@ -31,7 +31,7 @@ export interface EndpointGroup {
 }
 
 export const useDocStore = defineStore('doc', () => {
-    const doc = ref<OpenApiDoc | null>(null);
+    const doc = ref<OpenApiDoc | undefined>();
     const selectedPath = ref<string | null>(null);
     const selectedMethod = ref<HttpMethod | null>(null);
     const selectedComponentType = ref<ComponentType | null>(null);
@@ -49,7 +49,7 @@ export const useDocStore = defineStore('doc', () => {
         const ungrouped: EndpointItem[] = [];
 
         for (const path of Object.keys(paths)) {
-            const item = paths[path];
+            const item = paths[path]!;
             for (const method of HTTP_METHODS) {
                 const op = item[method];
                 if (!op) { continue; }
@@ -120,7 +120,7 @@ export const useDocStore = defineStore('doc', () => {
         if (!doc.value?.components || !selectedComponentType.value || !selectedComponentName.value) {
             return null;
         }
-        const section = doc.value.components[selectedComponentType.value] as Record<string, unknown> | undefined;
+        const section = doc.value.components[selectedComponentType.value];
         return section?.[selectedComponentName.value] ?? null;
     });
 
@@ -130,7 +130,8 @@ export const useDocStore = defineStore('doc', () => {
 
     // ── Actions ───────────────────────────────────────────────────────────────
 
-    function setDoc(newDoc: OpenApiDoc) {
+    function setDoc(newDoc: OpenApiDoc | undefined) {
+
         doc.value = newDoc;
     }
 
@@ -193,7 +194,9 @@ export const useDocStore = defineStore('doc', () => {
         if (!doc.value?.paths?.[path]) { return; }
         delete doc.value.paths[path][method];
         // Remove entire path item if all methods are gone
-        if (HTTP_METHODS.every((m) => !doc.value!.paths![path][m])) {
+
+        const p = doc.value.paths[path];
+        if (HTTP_METHODS.every((m) => !p[m])) {
             delete doc.value.paths[path];
         }
         if (selectedPath.value === path && selectedMethod.value === method) {
@@ -215,7 +218,8 @@ export const useDocStore = defineStore('doc', () => {
         doc.value.paths[newPath][newMethod] = op;
 
         delete doc.value.paths[oldPath][oldMethod];
-        if (HTTP_METHODS.every((m) => !doc.value!.paths![oldPath][m])) {
+        const p = doc.value.paths[oldPath];
+        if (HTTP_METHODS.every((m) => !p[m])) {
             delete doc.value.paths[oldPath];
         }
 
@@ -227,7 +231,8 @@ export const useDocStore = defineStore('doc', () => {
 
     function updateOperation(path: string, method: HttpMethod, op: OperationObject) {
         if (!doc.value?.paths?.[path]) { return; }
-        doc.value.paths[path][method] = op;
+        let p = doc.value.paths[path] as Record<string, OperationObject | undefined>;
+        p[method] = op;
     }
 
     function updateInfo(info: Partial<OpenApiDoc['info']>) {
