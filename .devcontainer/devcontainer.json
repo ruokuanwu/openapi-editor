@@ -3,15 +3,7 @@
         "dockerfile": "Dockerfile",
         "options": [
             "--network=host"
-        ],
-        "args": {
-            "http_proxy": "http://172.17.0.1:10808",
-            "https_proxy": "http://172.17.0.1:10808",
-            "HTTP_PROXY": "http://172.17.0.1:10808",
-            "HTTPS_PROXY": "http://172.17.0.1:10808",
-            "no_proxy": "localhost,127.0.0.1",
-            "NO_PROXY": "localhost,127.0.0.1"
-        }
+        ]
     },
     "mounts": [
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
@@ -41,11 +33,7 @@
             }
         }
     },
-    "containerEnv": {
-        "http_proxy": "http://172.17.0.1:10808",
-        "https_proxy": "http://172.17.0.1:10808",
-        "no_proxy": "localhost,127.0.0.1",
-    },
+    "containerEnv": {},
     "forwardPorts": [
         3001
     ]
