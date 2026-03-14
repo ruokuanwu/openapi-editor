@@ -5,8 +5,17 @@
             "--network=host"
         ]
     },
+    "remoteUser": "root",
+    "runArgs": [
+        "--user",
+        "root"
+    ],
     "mounts": [
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+        // // 挂载本地 .ssh 目录到容器的 /root/.ssh（root 用户）
+        "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
+        // 如果容器使用非 root 用户（比如 vscode），需要额外挂载到对应目录
+        // "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
     ],
     "features": {
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1.8.0": {
