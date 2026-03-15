@@ -123,7 +123,7 @@ import type { ComponentType } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
 import ResponseBodyEditor from './ResponseBodyEditor.vue';
 import RequestBodyContentEditor from './RequestBodyContentEditor.vue';
-import type { OpenApiDoc, SchemaObject, ResponseObject, ParameterObject, RequestBodyObject } from '../types';
+import type { OpenApiDoc, SchemaObject, ResponseObject, ParameterObject, RequestBodyObject } from '@shared/types';
 import { generateMockData } from '../utils/mockGenerator';
 import vscode from '../vscode';
 import { resolveParameter, resolveSchema } from '../utils/resolve';

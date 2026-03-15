@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { RunResult, RunRequest, RunInstanceParam, RunInstanceBody, ParameterIn, SchemaObject } from '../types';
-import type { OperationObject, OpenApiDoc } from '../types';
+import type { RunResult, RunRequest, RunInstanceParam, RunInstanceBody, ParameterIn } from '../types';
+import type { OperationObject, OpenApiDoc, SchemaObject } from '@shared/types';
 import { generateSchemaExample, buildFormContentFromSchema } from '../utils/requestBuilder';
 import { generateMockData } from '../utils/mockGenerator';
 import { resolveSchema, resolveParameter, resolveRequestBody } from '../utils/resolve';

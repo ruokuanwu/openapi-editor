@@ -1,6 +1,7 @@
 // openapiRefUtils.ts
 // import { OpenAPIV3 } from 'openapi-types';
-import { type SchemaObject, type ResponseObject, type RequestBodyObject, type ParameterObject, type HeaderObject } from '../types';
+import { type HeaderObject } from '../types';
+import type { SchemaObject, ResponseObject, RequestBodyObject, ParameterObject } from '@shared/types';
 
 export enum RefType {
     Schema = 'schema',

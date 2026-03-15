@@ -59,7 +59,7 @@
 import { computed } from 'vue';
 import { Plus, Delete } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
-import type { ParameterObject } from '../types';
+import type { ParameterObject } from '@shared/types';
 
 const SCHEMA_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object'];
 

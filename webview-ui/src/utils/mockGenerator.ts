@@ -1,4 +1,4 @@
-import type { SchemaObject, OpenApiDoc } from '../types';
+import type { SchemaObject, OpenApiDoc } from '@shared/types';
 import { isReferenceObject } from './resolve';
 
 const MAX_DEPTH = 5;

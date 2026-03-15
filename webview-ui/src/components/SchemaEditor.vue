@@ -116,7 +116,7 @@
 import { computed, reactive, ref } from 'vue';
 import { Plus, Delete, ArrowDown, ArrowRight, Right, Edit, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
-import type { SchemaObject } from '../types';
+import type { SchemaObject } from '@shared/types';
 import { generateMockData } from '../utils/mockGenerator';
 import { isReferenceObject, isArraySchemaObject } from '../utils/resolve';
 

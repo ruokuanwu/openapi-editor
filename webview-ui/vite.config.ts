@@ -7,6 +7,11 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
     plugins: [vue()],
+    resolve: {
+        alias: {
+            '@shared': resolve(__dirname, '../shared'),
+        },
+    },
     build: {
         outDir: resolve(__dirname, '../out/webview'),
         emptyOutDir: true,

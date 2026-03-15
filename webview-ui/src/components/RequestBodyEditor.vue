@@ -97,10 +97,9 @@ import { ref, computed, watch } from 'vue';
 import { Plus, Delete, Link, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
-import type { SchemaObject } from '../types';
 import { generateMockData } from '../utils/mockGenerator';
 import { resolveRequestBody } from '../utils/resolve';
-import { RequestBodyObject } from '../types';
+import { type SchemaObject, RequestBodyObject } from '@shared/types';
 import { resolveSchema, isReferenceObject } from '../utils/resolve';
 
 const COMMON_CONTENT_TYPES = [

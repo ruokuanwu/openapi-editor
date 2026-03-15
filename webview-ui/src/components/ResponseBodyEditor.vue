@@ -6,7 +6,8 @@
                 <el-radio-button v-for="ct in contentTypes" :key="ct" :value="ct">{{ ct }}</el-radio-button>
             </el-radio-group>
             <el-button size="small" :icon="Plus" plain @click="showAdd = true" />
-            <el-button v-if="contentTypes.length > 0" size="small" type="danger" text :icon="Delete" @click="removeCurrentCT" />
+            <el-button v-if="contentTypes.length > 0" size="small" type="danger" text :icon="Delete"
+                @click="removeCurrentCT" />
         </div>
 
         <div v-if="contentTypes.length === 0" class="no-content">
@@ -37,7 +38,7 @@
 import { ref, computed } from 'vue';
 import { Plus, Delete } from '@element-plus/icons-vue';
 import SchemaEditor from './SchemaEditor.vue';
-import type { ResponseObject, SchemaObject } from '../types';
+import type { ResponseObject, SchemaObject } from '@shared/types';
 
 const COMMON = ['application/json', 'application/xml', 'text/plain'];
 
@@ -85,12 +86,14 @@ function confirmAdd() {
     margin-bottom: 10px;
     flex-wrap: wrap;
 }
+
 .schema-section-title {
     font-weight: 600;
     font-size: 12px;
     opacity: 0.8;
     margin-bottom: 8px;
 }
+
 .no-content {
     padding: 16px;
     text-align: center;

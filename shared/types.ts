@@ -1,16 +1,15 @@
 // Shared type definitions – mirrors src/shared/types.ts in the extension host.
 
 import { OpenAPIV3_1 } from 'openapi-types';
-import { OperationObject, ParameterObject, SchemaObject, ResponseObject, RequestBodyObject, OpenApiDoc } from '@shared/types';
 
 
-// export type OpenApiDoc = OpenAPIV3_1.Document;
-// export type OperationObject = OpenAPIV3_1.OperationObject;
-// export type ResponseObject = OpenAPIV3_1.ResponseObject;
-// export type RequestBodyObject = OpenAPIV3_1.RequestBodyObject;
-// export type SchemaObject = OpenAPIV3_1.SchemaObject;
-// export type ReferenceObject = OpenAPIV3_1.ReferenceObject;
-// export type ParameterObject = OpenAPIV3_1.ParameterObject;
+export type OpenApiDoc = OpenAPIV3_1.Document;
+export type OperationObject = OpenAPIV3_1.OperationObject;
+export type ResponseObject = OpenAPIV3_1.ResponseObject;
+export type RequestBodyObject = OpenAPIV3_1.RequestBodyObject;
+export type SchemaObject = OpenAPIV3_1.SchemaObject;
+export type ReferenceObject = OpenAPIV3_1.ReferenceObject;
+export type ParameterObject = OpenAPIV3_1.ParameterObject;
 
 export interface InfoObject {
     title: string;
@@ -20,7 +19,7 @@ export interface InfoObject {
     license?: { name: string; url?: string };
 }
 
-
+export type PathsObject = Record<string, PathItemObject>;
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head' | 'trace';
 
@@ -57,11 +56,22 @@ export interface PathItemObject {
 
 export type ParameterIn = 'path' | 'query' | 'header' | 'cookie';
 
-
+// export interface ParameterObject {
+//     name: string;
+//     in: ParameterIn;
+//     description?: string;
+//     required?: boolean;
+//     deprecated?: boolean;
+//     schema?: SchemaObject;
+// }
 
 export type HeaderObject = OpenAPIV3_1.HeaderObject;
 
-
+// export interface RequestBodyObject {
+//     description?: string;
+//     required?: boolean;
+//     content: Record<string, MediaTypeObject>;
+// }
 
 export interface MediaTypeObject {
     schema?: SchemaObject;
@@ -70,6 +80,39 @@ export interface MediaTypeObject {
 
 export type ResponsesObject = Record<string, ResponseObject>;
 
+// export interface ResponseObject {
+//     description: string;
+//     content?: Record<string, MediaTypeObject>;
+//     headers?: Record<string, unknown>;
+// }
+
+// export interface SchemaObject {
+//     type?: string;
+//     format?: string;
+//     title?: string;
+//     description?: string;
+//     default?: unknown;
+//     example?: unknown;
+//     enum?: unknown[];
+//     properties?: Record<string, SchemaObject>;
+//     required?: string[];
+//     items?: SchemaObject;
+//     additionalProperties?: SchemaObject | boolean;
+//     nullable?: boolean;
+//     readOnly?: boolean;
+//     writeOnly?: boolean;
+//     $ref?: string;
+//     allOf?: SchemaObject[];
+//     anyOf?: SchemaObject[];
+//     oneOf?: SchemaObject[];
+//     minimum?: number;
+//     maximum?: number;
+//     minLength?: number;
+//     maxLength?: number;
+//     pattern?: string;
+//     minItems?: number;
+//     maxItems?: number;
+// }
 
 export interface ComponentsObject {
     schemas?: Record<string, SchemaObject>;

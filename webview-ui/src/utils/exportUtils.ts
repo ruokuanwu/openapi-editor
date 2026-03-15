@@ -1,4 +1,5 @@
-import type { OperationObject, OpenApiDoc, HttpMethod } from '../types';
+import type { HttpMethod } from '../types';
+import type { OperationObject, OpenApiDoc } from '@shared/types';
 import type { useConfigStore } from '../store/useConfigStore';
 import { buildRunRequest } from './requestBuilder';
 

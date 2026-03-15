@@ -1,4 +1,4 @@
-import type { OperationObject, OpenApiDoc, SchemaObject } from '../types';
+import type { OperationObject, OpenApiDoc, SchemaObject } from '@shared/types';
 import type { useConfigStore } from '../store/useConfigStore';
 import type { RunRequest, RunInstanceParam, RunInstanceBody } from '../types';
 import { isReferenceObject, resolveSchema, resolveParameter, resolveRequestBody } from './resolve';

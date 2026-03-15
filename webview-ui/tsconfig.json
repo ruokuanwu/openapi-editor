@@ -11,7 +11,13 @@
             "DOM.Iterable"
         ],
         "skipLibCheck": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "baseUrl": ".",
+        "paths": {
+            "@shared/*": [
+                "../shared/*"
+            ]
+        }
     },
     "include": [
         "src/**/*",
