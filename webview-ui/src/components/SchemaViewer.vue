@@ -3,23 +3,25 @@
 
         <!-- ── $ref ──────────────────────────────────────────────────────── -->
         <template v-if="isRef">
-            <div class="ref-row">
-                <el-tag size="small" type="info" class="ref-tag">{{ refStr }}</el-tag>
-                <el-button size="small" text :icon="refExpanded ? ArrowDown : ArrowRight"
-                    @click="refExpanded = !refExpanded" />
-                <span v-if="refExpanded && !resolvedRef" class="ref-unresolved">无法解析引用</span>
-            </div>
-            <div v-if="refExpanded && resolvedRef" class="nested-block">
+            <div v-if="resolvedRef" class="ref-block">
+                <div class="ref-block-label">
+                    <span class="ref-block-arrow">↳</span>
+                    <span class="ref-block-name">{{ refName }}</span>
+                    <span v-if="resolvedRefType" class="ref-block-type">{{ resolvedRefType }}</span>
+                </div>
                 <SchemaViewer :schema="resolvedRef" :level="lv + 1" />
             </div>
         </template>
 
         <!-- ── object with properties ────────────────────────────────────── -->
         <template v-else-if="(s as any).type === 'object' || (s as any).properties">
-            <el-table :data="propRows" border size="small" style="width:100%">
+            <el-table :data="displayPropRows" border size="small" style="width:100%" :span-method="propSpanMethod">
                 <el-table-column label="属性名" min-width="130">
                     <template #default="{ row }">
-                        <span class="ro-text">{{ row.name }}</span>
+                        <div v-if="row._expansion" style="padding:8px 0 8px 32px;">
+                            <SchemaViewer :schema="row.schema" :level="lv + 1" />
+                        </div>
+                        <span v-else class="ro-text">{{ row.name }}</span>
                     </template>
                 </el-table-column>
                 <el-table-column label="类型" width="110">
@@ -43,21 +45,12 @@
                     </template>
                 </el-table-column>
                 <el-table-column label="" width="44" align="center">
-                    <template #default="{ row, $index }">
-                        <el-button v-if="isExpandable(row.schema)" size="small" text
-                            :icon="expanded[$index] ? ArrowDown : ArrowRight"
-                            @click="expanded[$index] = !expanded[$index]" />
+                    <template #default="{ row }">
+                        <el-button v-if="!row._expansion && isExpandable(row.schema)" size="small" text
+                            :icon="expandedNames[row.name] ? ArrowDown : ArrowRight"
+                            @click="expandedNames[row.name] = !expandedNames[row.name]" />
                     </template>
                 </el-table-column>
-                <template #append>
-                    <template v-for="(row, idx) in propRows" :key="`nested-${row.name}`">
-                        <tr v-if="expanded[idx]">
-                            <td :colspan="6" style="padding:8px 0 8px 32px;background:#fafafa">
-                                <SchemaViewer :schema="row.schema" :level="lv + 1" />
-                            </td>
-                        </tr>
-                    </template>
-                </template>
             </el-table>
         </template>
 
@@ -132,18 +125,48 @@ const resolvedRef = computed((): SchemaObject | ReferenceObject | null => {
     if (!isRef.value) { return null; }
     try { return getObjectByRef(docStore.doc, refStr.value) as SchemaObject; } catch { return null; }
 });
+const refName = computed(() => {
+    const parts = refStr.value.split('/');
+    return parts[parts.length - 1] ?? refStr.value;
+});
+const resolvedRefType = computed((): string | null => {
+    const r = resolvedRef.value as any;
+    if (!r) { return null; }
+    if (r.type) { return r.type; }
+    if (r.properties) { return 'object'; }
+    if (r.items !== undefined) { return 'array'; }
+    return null;
+});
 
 // Treat schema as non-ref SchemaObject for convenience
 const s = computed(() => props.schema as SchemaObject);
 
 // ── Property rows ─────────────────────────────────────────────────────────────
 interface PropEntry { name: string; schema: SchemaObject | ReferenceObject }
-const expanded = reactive<Record<number, boolean>>({});
+const expandedNames = reactive<Record<string, boolean>>({});
 
 const propRows = computed((): PropEntry[] => {
     const p: Record<string, SchemaObject | ReferenceObject> = (s.value as any).properties ?? {};
     return Object.keys(p).map((name) => ({ name, schema: p[name] }));
 });
+
+const displayPropRows = computed(() => {
+    const result: any[] = [];
+    for (const row of propRows.value) {
+        result.push(row);
+        if (expandedNames[row.name]) {
+            result.push({ _expansion: true, schema: row.schema });
+        }
+    }
+    return result;
+});
+
+function propSpanMethod({ row, columnIndex }: any) {
+    if (row._expansion) {
+        return columnIndex === 0 ? [1, 6] : [0, 0];
+    }
+    return [1, 1];
+}
 
 function isRequired(name: string): boolean {
     return (s.value as any).required?.includes(name) ?? false;
@@ -244,6 +267,42 @@ const comboExpanded = reactive<Record<string, boolean>>({});
     padding: 4px 0 4px 16px;
     border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
     margin-top: 4px;
+}
+
+.ref-block {
+    padding: 4px 0 4px 12px;
+    border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
+    margin-top: 4px;
+}
+
+.ref-block-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 6px;
+    opacity: 0.5;
+    font-size: 11px;
+    line-height: 1;
+    user-select: none;
+}
+
+.ref-block-arrow {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #999);
+}
+
+.ref-block-name {
+    font-family: 'Consolas', 'Courier New', monospace;
+    color: var(--vscode-foreground, #555);
+    letter-spacing: 0.2px;
+}
+
+.ref-block-type {
+    background: var(--vscode-textCodeBlock-background, #f0f0f0);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+    color: var(--vscode-descriptionForeground, #888);
 }
 
 .combo-item {

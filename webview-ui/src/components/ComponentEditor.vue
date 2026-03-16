@@ -335,6 +335,10 @@ function ensureParamSchema(param: ParameterObject): boolean {
     pointer-events: auto;
 }
 
+.comp-edit-body.is-readonly :deep(.schema-viewer) {
+    pointer-events: auto;
+}
+
 .comp-edit-body.is-readonly :deep(.el-input__wrapper),
 .comp-edit-body.is-readonly :deep(.el-textarea__inner),
 .comp-edit-body.is-readonly :deep(.el-select__wrapper) {

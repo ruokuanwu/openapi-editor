@@ -2,98 +2,139 @@
     <div class="schema-editor">
 
         <!-- ── Object with properties ─────────────────────────────────────── -->
-        <el-table v-if="isObject" :data="propertyRows" border size="small" style="width: 100%">
-            <!-- Name -->
-            <el-table-column :label="level > 0 ? undefined : '属性名'" min-width="130">
-                <template #header v-if="level === 0">属性名</template>
-                <template #default="{ row }">
-                    <span v-if="isReferenceObject(row.schema)" class="ro-text">{{ row.name }}</span>
-                    <el-input v-else v-model="row.name" size="small" @blur="renameProperty(row)" />
-                </template>
-            </el-table-column>
-
-            <!-- Type -->
-            <el-table-column label="类型" width="110">
-                <template #default="{ row }">
-                    <el-tag v-if="isReferenceObject(row.schema)" size="small" type="info" class="ref-type-tag">
-                        $ref
-                    </el-tag>
-                    <el-select v-else v-model="(row.schema as any).type" size="small" style="width: 100%">
-                        <el-option v-for="t in SCHEMA_TYPES" :key="t" :label="t" :value="t" />
-                    </el-select>
-                </template>
-            </el-table-column>
-
-            <!-- Format -->
-            <el-table-column label="格式" width="100">
-                <template #default="{ row }">
-                    <span v-if="isReferenceObject(row.schema)" class="ro-text">—</span>
-                    <el-input v-else v-model="(row.schema as any).format" size="small" placeholder="e.g. date-time" />
-                </template>
-            </el-table-column>
-
-            <!-- Required -->
-            <el-table-column label="必填" width="58" align="center">
-                <template #default="{ row }">
-                    <el-checkbox :model-value="isRequired(row.name)"
-                        @change="(v: boolean) => setRequired(row.name, v)" />
-                </template>
-            </el-table-column>
-
-            <!-- Description -->
-            <el-table-column label="描述" min-width="140">
-                <template #default="{ row }">
-                    <span v-if="isReferenceObject(row.schema)" class="ro-text ref-path">
-                        {{ (row.schema as ReferenceObject).$ref }}
-                    </span>
-                    <el-input v-else v-model="(row.schema as any).description" size="small" placeholder="说明" />
-                </template>
-            </el-table-column>
-
-            <!-- Expand / Delete -->
-            <el-table-column label="" width="44" align="center">
-                <template #default="{ row, $index }">
-                    <el-button
-                        v-if="isReferenceObject(row.schema) || (row.schema as any).type === 'object' || (row.schema as any).type === 'array' || (row.schema as any).properties"
-                        size="small" text :icon="expanded[$index] ? ArrowDown : ArrowRight"
-                        @click="expanded[$index] = !expanded[$index]" />
-                    <el-button v-else size="small" type="danger" text :icon="Delete"
-                        @click="removeProperty(row.name)" />
-                </template>
-            </el-table-column>
-
-            <!-- Nested rows -->
-            <template #append>
-                <template v-for="(row, idx) in propertyRows" :key="`nested-${row.name}`">
-                    <tr v-if="expanded[idx]">
-                        <td :colspan="6" style="padding: 8px 0 8px 32px; background: #fafafa;">
-                            <!-- $ref property → read-only viewer -->
+        <template v-if="isObject">
+            <el-table :data="displayRows" border size="small" style="width: 100%" :span-method="spanMethod">
+                <el-table-column :label="level > 0 ? undefined : '属性名'" min-width="130">
+                    <template #header v-if="level === 0">属性名</template>
+                    <template #default="{ row }">
+                        <div v-if="row._expansion" class="prop-expansion-block">
                             <template v-if="isReferenceObject(row.schema)">
                                 <SchemaViewer :schema="row.schema" :level="level + 1" />
                             </template>
-                            <!-- array property with $ref items -->
                             <template
                                 v-else-if="(row.schema as any).type === 'array' && isReferenceObject((row.schema as any).items)">
-                                <div style="font-size:12px; margin-bottom: 4px; opacity: 0.7">数组项 (items):</div>
                                 <SchemaViewer :schema="(row.schema as any).items" :level="level + 1" />
                             </template>
-                            <!-- array property with schema items -->
-                            <template v-else-if="(row.schema as any).type === 'array'">
-                                <div style="font-size:12px; margin-bottom: 4px; opacity: 0.7">数组项 (items):</div>
-                                <SchemaEditor :schema="ensureItems(row.schema as SchemaObject)" :level="level + 1" />
-                            </template>
-                            <!-- object / nested properties -->
                             <template v-else>
                                 <SchemaEditor :schema="(row.schema as SchemaObject)" :level="level + 1" />
                             </template>
-                        </td>
-                    </tr>
-                </template>
-            </template>
-        </el-table>
+                        </div>
+                        <span v-else-if="isReferenceObject(row.schema)" class="ro-text">{{ row.name }}</span>
+                        <el-input v-else v-model="row.name" size="small" @blur="renameProperty(row)" />
+                    </template>
+                </el-table-column>
 
-        <!-- ── Non-object schema fields ───────────────────────────────────── -->
-        <template v-if="!isObject">
+                <!-- Type -->
+                <el-table-column label="类型" width="110">
+                    <template #default="{ row }">
+                        <template v-if="!row._expansion">
+                            <el-tag v-if="isReferenceObject(row.schema)" size="small" type="info" class="ref-type-tag">
+                                $ref
+                            </el-tag>
+                            <el-select v-else v-model="(row.schema as any).type" size="small" style="width: 100%">
+                                <el-option v-for="t in SCHEMA_TYPES" :key="t" :label="t" :value="t" />
+                            </el-select>
+                        </template>
+                    </template>
+                </el-table-column>
+
+                <!-- Format -->
+                <el-table-column label="格式" width="100">
+                    <template #default="{ row }">
+                        <template v-if="!row._expansion">
+                            <span v-if="isReferenceObject(row.schema)" class="ro-text">—</span>
+                            <el-input v-else v-model="(row.schema as any).format" size="small"
+                                placeholder="e.g. date-time" />
+                        </template>
+                    </template>
+                </el-table-column>
+
+                <!-- Required -->
+                <el-table-column label="必填" width="58" align="center">
+                    <template #default="{ row }">
+                        <el-checkbox v-if="!row._expansion" :model-value="isRequired(row.name)"
+                            @change="(v: boolean) => setRequired(row.name, v)" />
+                    </template>
+                </el-table-column>
+
+                <!-- Description -->
+                <el-table-column label="描述" min-width="140">
+                    <template #default="{ row }">
+                        <template v-if="!row._expansion">
+                            <span v-if="isReferenceObject(row.schema)" class="ro-text ref-path">
+                                {{ (row.schema as ReferenceObject).$ref }}
+                            </span>
+                            <el-input v-else v-model="(row.schema as any).description" size="small" placeholder="说明" />
+                        </template>
+                    </template>
+                </el-table-column>
+
+                <!-- Expand / Delete -->
+                <el-table-column label="" width="44" align="center">
+                    <template #default="{ row }">
+                        <template v-if="!row._expansion">
+                            <el-button
+                                v-if="isReferenceObject(row.schema) || (row.schema as any).type === 'object' || (row.schema as any).type === 'array' || (row.schema as any).properties"
+                                size="small" text :icon="expandedNames[row.name] ? ArrowDown : ArrowRight"
+                                @click="expandedNames[row.name] = !expandedNames[row.name]" />
+                            <el-button v-else size="small" type="danger" text :icon="Delete"
+                                @click="removeProperty(row.name)" />
+                        </template>
+                    </template>
+                </el-table-column>
+            </el-table>
+
+            <div class="array-add-row" @click="addProperty">
+                <el-icon class="array-add-icon">
+                    <Plus />
+                </el-icon>
+                <span>添加属性</span>
+            </div>
+        </template>
+
+        <!-- ── Array ─────────────────────────────────────────────────────── -->
+        <template v-else-if="(schema as any).type === 'array'">
+            <!-- items 存在时：内容区 + 右侧红色垃圾桶 -->
+            <div v-if="(schema as any).items" class="array-items-wrapper">
+                <div class="array-items-content">
+                    <SchemaViewer v-if="isReferenceObject((schema as any).items)" :schema="(schema as any).items"
+                        :level="level + 1" />
+                    <SchemaEditor v-else :schema="(schema as any).items" :level="level + 1" />
+                </div>
+                <div class="array-items-delete">
+                    <el-button size="small" type="danger" text :icon="Delete" @click="removeItems" />
+                </div>
+            </div>
+
+            <!-- items 尚未定义时：点击整行添加 -->
+            <div v-else class="array-add-row" @click="initItems">
+                <el-icon class="array-add-icon">
+                    <Plus />
+                </el-icon>
+                <span>添加项目</span>
+            </div>
+        </template>
+
+        <!-- ── allOf / oneOf / anyOf ──────────────────────────────────────── -->
+        <template v-else-if="hasCombinator">
+            <div v-for="key in combKeys" :key="key" class="combo-section">
+                <div class="combo-header" @click="comboExpanded[key] = !comboExpanded[key]">
+                    <el-icon>
+                        <component :is="comboExpanded[key] ? ArrowDown : ArrowRight" />
+                    </el-icon>
+                    <el-tag size="small" type="warning">{{ key }}</el-tag>
+                    <span class="combo-count">{{ (schema as any)[key].length }} 个子 schema</span>
+                </div>
+                <div v-if="comboExpanded[key]" class="nested-block">
+                    <div v-for="(item, i) in (schema as any)[key]" :key="(i as number)" class="combo-item">
+                        <el-tag size="small" style="margin-bottom:4px">{{ (i as number) + 1 }}</el-tag>
+                        <SchemaEditor :schema="item" :level="level + 1" />
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template v-else>
             <el-form :model="schema" label-width="70px" label-position="left" size="small">
                 <el-form-item label="类型">
                     <el-select v-model="(schema as any).type" style="width: 120px">
@@ -110,49 +151,18 @@
                 <!-- Enum values -->
                 <el-form-item v-if="supportsEnum" label="枚举值">
                     <div class="enum-editor">
-                        <el-tag v-for="(v, i) in (schema as any).enum ?? []" :key="i" closable size="small"
-                            style="margin: 2px" @close="removeEnumValue(i)">{{ v }}</el-tag>
+                        <el-tag v-for="(v, i) in (schema as any).enum ?? []" :key="(i as number)" closable size="small"
+                            style="margin: 2px" @close="removeEnumValue(i as number)">{{ v }}</el-tag>
                         <el-input v-model="newEnumValue" size="small" placeholder="添加值"
                             style="width: 100px; margin: 2px" @keydown.enter="addEnumValue" />
                         <el-button size="small" :icon="Plus" @click="addEnumValue" style="margin: 2px" />
                     </div>
                 </el-form-item>
             </el-form>
-
-            <!-- Array items editing section -->
-            <template v-if="(schema as any).type === 'array'">
-                <div class="items-section-header" @click="itemsExpanded = !itemsExpanded">
-                    <el-icon>
-                        <component :is="itemsExpanded ? ArrowDown : ArrowRight" />
-                    </el-icon>
-                    <span class="items-section-label">数组项 (items)</span>
-                    <el-button v-if="!(schema as any).items" size="small" text :icon="Plus" @click.stop="initItems"
-                        style="margin-left: 4px" />
-                </div>
-                <div v-if="itemsExpanded" class="items-body">
-                    <SchemaViewer v-if="isReferenceObject((schema as any).items)" :schema="(schema as any).items"
-                        :level="level + 1" />
-                    <SchemaEditor v-else-if="(schema as any).items" :schema="(schema as any).items"
-                        :level="level + 1" />
-                    <div v-else class="no-items">
-                        <el-button size="small" :icon="Plus" plain @click="initItems">定义数组项</el-button>
-                    </div>
-                </div>
-            </template>
+            <div class="add-prop">
+                <el-button size="small" plain @click="(schema as any).type = 'object'">转为对象类型</el-button>
+            </div>
         </template>
-
-        <!-- ── Add property button ─────────────────────────────────────────── -->
-        <div v-if="isObject" class="add-prop">
-            <el-button size="small" :icon="Plus" plain @click="addProperty">添加属性</el-button>
-        </div>
-
-        <!-- ── Convert to object button ───────────────────────────────────── -->
-        <div v-if="!isObject && (schema as any).type !== 'array'" class="add-prop">
-            <el-button v-if="(schema as any).type !== 'object'" size="small" plain
-                @click="(schema as any).type = 'object'">
-                转为对象类型
-            </el-button>
-        </div>
 
     </div>
 </template>
@@ -172,9 +182,15 @@ const props = defineProps<{
 }>();
 
 const level = computed(() => props.level ?? 0);
-const expanded = reactive<Record<number, boolean>>({});
+const expandedNames = reactive<Record<string, boolean>>({});
 const itemsExpanded = ref(false);
 const newEnumValue = ref('');
+
+// ── Combinator handling ───────────────────────────────────────────────────────
+const COMBI = ['allOf', 'oneOf', 'anyOf'] as const;
+const hasCombinator = computed((): boolean => COMBI.some((k) => !!(props.schema as any)[k]));
+const combKeys = computed(() => COMBI.filter((k) => !!(props.schema as any)[k]));
+const comboExpanded = reactive<Record<string, boolean>>({});
 
 // ── Object detection ──────────────────────────────────────────────────────────
 const isObject = computed((): boolean => {
@@ -197,6 +213,24 @@ const propertyRows = computed((): PropertyRow[] => {
     const p: Record<string, SchemaObject | ReferenceObject> = (props.schema as any).properties ?? {};
     return Object.keys(p).map((name) => ({ name, schema: p[name], _origName: name }));
 });
+
+const displayRows = computed(() => {
+    const result: any[] = [];
+    for (const row of propertyRows.value) {
+        result.push(row);
+        if (expandedNames[row.name]) {
+            result.push({ _expansion: true, name: row.name, schema: row.schema });
+        }
+    }
+    return result;
+});
+
+function spanMethod({ row, columnIndex }: any) {
+    if (row._expansion) {
+        return columnIndex === 0 ? [1, 6] : [0, 0];
+    }
+    return [1, 1];
+}
 
 function isRequired(name: string): boolean {
     return props.schema.required?.includes(name) ?? false;
@@ -250,6 +284,11 @@ function ensureItems(schema: SchemaObject): SchemaObject {
 function initItems() {
     (props.schema as any).items = { type: 'string' };
     itemsExpanded.value = true;
+}
+
+function removeItems() {
+    (props.schema as any).items = undefined;
+    itemsExpanded.value = false;
 }
 
 // ── Enum editing ──────────────────────────────────────────────────────────────
@@ -330,5 +369,98 @@ function removeEnumValue(i: number) {
 
 .no-items {
     padding: 8px 0 4px;
+}
+
+.array-items-wrapper {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--vscode-panel-border, #e4e7ed);
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+.array-items-content {
+    flex: 1;
+    padding: 8px;
+    min-width: 0;
+}
+
+.array-items-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border-left: 1px solid var(--vscode-panel-border, #e4e7ed);
+}
+
+.array-add-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 0;
+    margin-top: 4px;
+    border: 1px dashed var(--vscode-panel-border, #e4e7ed);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--vscode-textLink-foreground, #409eff);
+    font-size: 12px;
+    transition: background 0.15s;
+}
+
+.array-add-row:hover {
+    background: var(--vscode-list-hoverBackground, rgba(64, 158, 255, 0.08));
+}
+
+.array-add-icon {
+    font-size: 14px;
+}
+
+.prop-expansion-block {
+    margin-top: 4px;
+    padding: 8px 8px 8px 16px;
+    border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
+    border-bottom: 1px solid var(--vscode-panel-border, #e4e7ed);
+}
+
+.prop-expansion-label {
+    font-size: 11px;
+    opacity: 0.6;
+    margin-bottom: 6px;
+    font-family: monospace;
+}
+
+.combo-section {
+    margin-top: 6px;
+}
+
+.combo-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 4px 2px;
+    border-radius: 3px;
+    user-select: none;
+}
+
+.combo-header:hover {
+    background: var(--vscode-list-hoverBackground, #f5f5f5);
+}
+
+.combo-count {
+    font-size: 11px;
+    opacity: 0.6;
+    margin-left: 4px;
+}
+
+.nested-block {
+    padding: 4px 0 4px 16px;
+    border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
+    margin-top: 4px;
+}
+
+.combo-item {
+    margin-bottom: 8px;
 }
 </style>
