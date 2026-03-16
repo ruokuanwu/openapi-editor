@@ -5,7 +5,7 @@
             <Sidebar />
             <main class="app-main">
                 <div class="editor-pane">
-                    <EndpointEditor v-if="docStore.selectedPath && docStore.selectedMethod" />
+                    <EndpointView v-if="docStore.selectedPath && docStore.selectedMethod" />
                     <ComponentEditor v-else-if="docStore.selectedComponentName" />
                     <div v-else-if="docStore.doc" class="app-empty">
                         <el-empty description="从左侧选择一个接口或组件开始编辑" :image-size="80" />
@@ -29,7 +29,7 @@ import { useConfigStore } from './store/useConfigStore';
 import { useRunStore } from './store/useRunStore';
 import Toolbar from './components/Toolbar.vue';
 import Sidebar from './components/Sidebar.vue';
-import EndpointEditor from './components/EndpointEditor.vue';
+import EndpointView from './components/EndpointView.vue';
 import ComponentEditor from './components/ComponentEditor.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import type { ExtToWebviewMessage } from './types';
@@ -76,7 +76,7 @@ onMounted(() => {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
             if (docStore.doc) {
-                vscode.postMessage({ type: 'save', doc: toRaw(docStore.doc )});
+                vscode.postMessage({ type: 'save', doc: toRaw(docStore.doc) });
             }
         }
     });
@@ -212,32 +212,32 @@ html.dark {
     color-scheme: dark;
 
     /* ── Layout backgrounds ── */
-    --vscode-editor-background:              #1e1e2e;
-    --vscode-sideBar-background:             #181825;
-    --vscode-sideBarSectionHeader-background:#11111b;
-    --vscode-panel-border:                   #313244;
+    --vscode-editor-background: #1e1e2e;
+    --vscode-sideBar-background: #181825;
+    --vscode-sideBarSectionHeader-background: #11111b;
+    --vscode-panel-border: #313244;
 
     /* ── Text ── */
-    --vscode-foreground:                     #cdd6f4;
-    --vscode-descriptionForeground:          #a6adc8;
+    --vscode-foreground: #cdd6f4;
+    --vscode-descriptionForeground: #a6adc8;
 
     /* ── Inputs ── */
-    --vscode-input-background:               #313244;
-    --vscode-input-foreground:               #cdd6f4;
-    --vscode-input-border:                   #45475a;
-    --vscode-input-placeholderForeground:    #6c7086;
+    --vscode-input-background: #313244;
+    --vscode-input-foreground: #cdd6f4;
+    --vscode-input-border: #45475a;
+    --vscode-input-placeholderForeground: #6c7086;
 
     /* ── Lists ── */
-    --vscode-list-hoverBackground:           #313244;
+    --vscode-list-hoverBackground: #313244;
     --vscode-list-activeSelectionBackground: #89b4fa;
     --vscode-list-activeSelectionForeground: #1e1e2e;
 
     /* ── Buttons ── */
-    --vscode-button-background:              #89b4fa;
-    --vscode-button-foreground:              #1e1e2e;
+    --vscode-button-background: #89b4fa;
+    --vscode-button-foreground: #1e1e2e;
 
     /* ── Code ── */
-    --vscode-textCodeBlock-background:       #313244;
+    --vscode-textCodeBlock-background: #313244;
 
     /* ── Body reset ── */
     background: #1e1e2e;
@@ -318,6 +318,7 @@ html.dark .el-empty__description p {
 .el-list-leave-active {
     transition: none !important;
 }
+
 .el-list-enter-from,
 .el-list-leave-to {
     opacity: 1 !important;
@@ -335,7 +336,7 @@ html.dark .el-table td {
     border-color: #313244 !important;
 }
 
-html.dark .el-table__row:hover > td {
+html.dark .el-table__row:hover>td {
     background-color: #313244 !important;
 }
 
@@ -389,12 +390,51 @@ html.dark .el-button--default:hover {
 }
 
 /* ── Dark mode: HTTP method badge colors (vivid for contrast) ── */
-html.dark .method-get    { background: #2d6a9f; color: #89dceb; border: 1px solid #3a90c6; }
-html.dark .method-post   { background: #1a5e3a; color: #a6e3a1; border: 1px solid #3a8a58; }
-html.dark .method-put    { background: #7a4e1a; color: #fab387; border: 1px solid #a06030; }
-html.dark .method-delete { background: #6e1a1a; color: #f38ba8; border: 1px solid #a03030; }
-html.dark .method-patch  { background: #1a5c5c; color: #94e2d5; border: 1px solid #2a8a82; }
-html.dark .method-options{ background: #3a2a6e; color: #cba6f7; border: 1px solid #5a4090; }
-html.dark .method-head   { background: #5c2a5c; color: #f5c2e7; border: 1px solid #8a4080; }
-html.dark .method-trace  { background: #3a3010; color: #f9e2af; border: 1px solid #6a5820; }
+html.dark .method-get {
+    background: #2d6a9f;
+    color: #89dceb;
+    border: 1px solid #3a90c6;
+}
+
+html.dark .method-post {
+    background: #1a5e3a;
+    color: #a6e3a1;
+    border: 1px solid #3a8a58;
+}
+
+html.dark .method-put {
+    background: #7a4e1a;
+    color: #fab387;
+    border: 1px solid #a06030;
+}
+
+html.dark .method-delete {
+    background: #6e1a1a;
+    color: #f38ba8;
+    border: 1px solid #a03030;
+}
+
+html.dark .method-patch {
+    background: #1a5c5c;
+    color: #94e2d5;
+    border: 1px solid #2a8a82;
+}
+
+html.dark .method-options {
+    background: #3a2a6e;
+    color: #cba6f7;
+    border: 1px solid #5a4090;
+}
+
+html.dark .method-head {
+    background: #5c2a5c;
+    color: #f5c2e7;
+    border: 1px solid #8a4080;
+}
+
+html.dark .method-trace {
+    background: #3a3010;
+    color: #f9e2af;
+    border: 1px solid #6a5820;
+}
 </style>

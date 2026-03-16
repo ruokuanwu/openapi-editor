@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, toRaw } from 'vue';
 import type {
     OpenApiDoc,
     HttpMethod,
@@ -38,6 +38,7 @@ export const useDocStore = defineStore('doc', () => {
     const selectedComponentName = ref<string | null>(null);
     const editSessionOwner = ref<EditSessionOwner | null>(null);
     const editSessionDirty = ref(false);
+    const editSnapshot = ref<{ doc: OpenApiDoc; path: string; method: HttpMethod } | null>(null);
 
     // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -289,6 +290,27 @@ export const useDocStore = defineStore('doc', () => {
         (doc.value.components[type] as Record<string, unknown>)[name] = value;
     }
 
+    function takeEditSnapshot() {
+        if (!doc.value || !selectedPath.value || !selectedMethod.value) { return; }
+        editSnapshot.value = {
+            doc: JSON.parse(JSON.stringify(toRaw(doc.value))),
+            path: selectedPath.value,
+            method: selectedMethod.value,
+        };
+    }
+
+    function restoreFromEditSnapshot() {
+        if (!editSnapshot.value) { return; }
+        const snap = editSnapshot.value;
+        setDoc(snap.doc);
+        selectEndpoint(snap.path, snap.method);
+        editSnapshot.value = null;
+    }
+
+    function clearEditSnapshot() {
+        editSnapshot.value = null;
+    }
+
     function renameComponent(type: ComponentType, oldName: string, newName: string) {
         if (!doc.value?.components?.[type]) { return; }
         if (!newName || newName === oldName) { return; }
@@ -321,6 +343,7 @@ export const useDocStore = defineStore('doc', () => {
         selectedComponentName,
         editSessionOwner,
         editSessionDirty,
+        editSnapshot,
         hasBlockingUnsavedChanges,
         endpointGroups,
         selectedOperation,
@@ -345,5 +368,8 @@ export const useDocStore = defineStore('doc', () => {
         removeComponent,
         renameComponent,
         updateComponent,
+        takeEditSnapshot,
+        restoreFromEditSnapshot,
+        clearEditSnapshot,
     };
 });
