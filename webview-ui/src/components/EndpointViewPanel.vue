@@ -15,20 +15,20 @@
                 <span v-if="operation.tags?.length" class="meta-badge-item">
                     <span class="meta-badge-label">Tags</span>
                     <el-tag v-for="tag in operation.tags" :key="tag" size="small" type="info" class="meta-tag">{{ tag
-                        }}</el-tag>
+                    }}</el-tag>
                 </span>
             </div>
             <div v-if="operation.description" class="meta-description">{{ operation.description }}</div>
         </div>
 
         <!-- ── Parameters ────────────────────────────────────────────────── -->
-        <template v-if="operation.parameters?.length">
+        <template v-if="resolvedParameters?.length">
             <div class="section-header">
                 <div class="section-bar" />
                 <span class="section-title">参数</span>
             </div>
             <div class="table-wrap">
-                <el-table :data="operation.parameters" stripe size="small" style="width: 100%">
+                <el-table :data="resolvedParameters" stripe size="small" style="width: 100%">
                     <el-table-column label="位置" width="80">
                         <template #default="{ row }">
                             <el-tag size="small" :type="paramTagType(row.in)">{{ row.in }}</el-tag>
@@ -40,7 +40,7 @@
                         </template>
                     </el-table-column>
                     <el-table-column label="类型" width="100">
-                        <template #default="{ row }">{{ row.schema?.type ?? '-' }}</template>
+                        <template #default="{ row }">{{ resolveSchema(_doc, row.schema)?.type ?? '-' }}</template>
                     </el-table-column>
                     <el-table-column label="必填" width="60" align="center">
                         <template #default="{ row }">
@@ -50,8 +50,15 @@
                             <span v-else style="opacity:0.4">-</span>
                         </template>
                     </el-table-column>
+                    <el-table-column label="默认值" min-width="160">
+                        <template #default="{ row }">{{ resolveSchema(_doc, row.schema)?.default ?? '' }}</template>
+                    </el-table-column>
                     <el-table-column label="描述" min-width="160">
                         <template #default="{ row }">{{ row.description ?? '' }}</template>
+                    </el-table-column>
+                    <el-table-column label="模式" min-width="160">
+                        <template #default="{ row }">{{ row.schema ? omit(resolveSchema(_doc, row.schema)!, ["type",
+                            "default"]) : '' }}</template>
                     </el-table-column>
                 </el-table>
             </div>
@@ -80,8 +87,8 @@
                         </el-button-group>
                     </div>
                     <div class="schema-view-body">
-                        <SchemaEditor v-if="getReqBodyMode(ct) === 'visual'" :schema="requestBodySchema(ct)!"
-                            :readonly="true" :level="0" />
+                        <SchemaViewer v-if="getReqBodyMode(ct) === 'visual'" :schema="requestBodySchema(ct)!"
+                            :level="0" />
                         <pre v-else
                             class="mock-json">{{ JSON.stringify(generateMockData(requestBodySchema(ct)!, docStore.doc), null, 2) }}</pre>
                     </div>
@@ -102,7 +109,7 @@
                         <template #title>
                             <div class="response-title">
                                 <el-tag :type="statusTagType(String(code))" size="small" class="status-code">{{ code
-                                    }}</el-tag>
+                                }}</el-tag>
                                 <span class="response-desc">{{ resp.description }}</span>
                             </div>
                         </template>
@@ -123,9 +130,8 @@
                                         </el-button-group>
                                     </div>
                                     <div class="schema-view-body">
-                                        <SchemaEditor v-if="getRespMode(String(code), ct) === 'visual'"
-                                            :schema="resolveResponse(_doc, resp)?.content![ct].schema!" :readonly="true"
-                                            :level="0" />
+                                        <SchemaViewer v-if="getRespMode(String(code), ct) === 'visual'"
+                                            :schema="resolveResponse(_doc, resp)?.content![ct].schema!" :level="0" />
                                         <pre v-else
                                             class="mock-json">{{ JSON.stringify(generateMockData(resolveResponse(_doc, resp)?.content![ct].schema!, docStore.doc), null, 2) }}</pre>
                                     </div>
@@ -154,8 +160,10 @@ import { Check } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import type { OperationObject, SchemaObject } from '@shared/types';
 import { generateMockData } from '../utils/mockGenerator';
-import SchemaEditor from './SchemaEditor.vue';
-import { resolveRequestBody, resolveResponse } from '../utils/resolve';
+import SchemaViewer from './SchemaViewer.vue';
+import { resolveParameter, resolveRequestBody, resolveResponse, resolveSchema } from '../utils/resolve';
+import { rawListeners } from 'process';
+import { omit } from '../utils/object';
 
 const props = defineProps<{
     operation: OperationObject;
@@ -166,6 +174,20 @@ const _doc = computed(() => docStore.doc);
 
 
 const operation = computed(() => props.operation);
+const resolvedParameters = computed(() => {
+    return operation.value.parameters?.map(p => resolveParameter(_doc, p)).filter(p => p != null) ?? [];
+});
+const resolvedResponses = computed(() => {
+    const resps = operation.value.responses ?? {};
+    const result: Record<string, ReturnType<typeof resolveResponse>> = {};
+    for (const code in resps) {
+        result[code] = resolveResponse(_doc, resps[code]);
+    }
+    return result;
+});
+const resolvedRequestBody = computed(() => {
+    return resolveRequestBody(_doc, operation.value.requestBody);
+});
 
 const hasRequestBody = computed(() => {
     const rb = operation.value.requestBody;
@@ -173,11 +195,11 @@ const hasRequestBody = computed(() => {
 });
 
 const requestBodyContentTypes = computed((): string[] => {
-    return Object.keys(resolveRequestBody(_doc, operation.value.requestBody)?.content ?? {});
+    return Object.keys(resolvedRequestBody.value?.content ?? {});
 });
 
 function requestBodySchema(ct: string): SchemaObject | null {
-    return resolveRequestBody(_doc, operation.value.requestBody)?.content?.[ct]?.schema ?? null;
+    return resolveSchema(_doc, resolveRequestBody(_doc, operation.value.requestBody)?.content?.[ct]?.schema) ?? null;
 }
 
 function paramTagType(loc: string): '' | 'success' | 'warning' | 'danger' | 'info' {

@@ -6,7 +6,8 @@
                 <el-radio-button v-for="ct in contentTypes" :key="ct" :value="ct">{{ ct }}</el-radio-button>
             </el-radio-group>
             <el-button size="small" :icon="Plus" plain @click="showAdd = true" />
-            <el-button v-if="contentTypes.length > 0" size="small" type="danger" text :icon="Delete" @click="removeCurrentCT" />
+            <el-button v-if="contentTypes.length > 0" size="small" type="danger" text :icon="Delete"
+                @click="removeCurrentCT" />
         </div>
 
         <div v-if="contentTypes.length === 0" class="no-content">
@@ -17,12 +18,17 @@
             <div class="schema-section-title-row">
                 <span class="schema-section-title">Schema</span>
                 <el-button-group size="small">
-                    <el-button :type="schemaViewMode === 'visual' ? 'primary' : ''" size="small" @click="schemaViewMode = 'visual'">表格</el-button>
-                    <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small" @click="schemaViewMode = 'json'">JSON</el-button>
+                    <el-button :type="schemaViewMode === 'visual' ? 'primary' : ''" size="small"
+                        @click="schemaViewMode = 'visual'">表格</el-button>
+                    <el-button :type="schemaViewMode === 'json' ? 'primary' : ''" size="small"
+                        @click="schemaViewMode = 'json'">JSON</el-button>
                 </el-button-group>
             </div>
-            <SchemaEditor v-if="schemaViewMode === 'visual'" :schema="activeSchema" />
-            <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(activeSchema, docStore.doc), null, 2) }}</pre>
+            <SchemaViewer v-if="schemaViewMode === 'visual' && isReferenceObject(activeSchema)"
+                :schema="activeSchema!" />
+            <SchemaEditor v-else-if="schemaViewMode === 'visual' && activeSchema" :schema="activeSchema" />
+            <pre v-else
+                class="mock-json">{{ JSON.stringify(generateMockData(activeSchema!, docStore.doc), null, 2) }}</pre>
         </div>
 
         <!-- Add CT dialog -->
@@ -44,7 +50,9 @@
 import { ref, computed, watch } from 'vue';
 import { Plus, Delete } from '@element-plus/icons-vue';
 import SchemaEditor from './SchemaEditor.vue';
+import SchemaViewer from './SchemaViewer.vue';
 import type { RequestBodyObject, SchemaObject } from '../types';
+import { isReferenceObject } from '../utils/resolve';
 import { useDocStore } from '../store/useDocStore';
 import { generateMockData } from '../utils/mockGenerator';
 
@@ -98,17 +106,20 @@ function confirmAdd() {
     margin-bottom: 10px;
     flex-wrap: wrap;
 }
+
 .schema-section-title-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 8px;
 }
+
 .schema-section-title {
     font-weight: 600;
     font-size: 12px;
     opacity: 0.8;
 }
+
 .mock-json {
     margin: 0;
     padding: 8px 10px;
@@ -122,6 +133,7 @@ function confirmAdd() {
     overflow-y: auto;
     color: var(--vscode-foreground, #333);
 }
+
 .no-content {
     padding: 16px;
     text-align: center;

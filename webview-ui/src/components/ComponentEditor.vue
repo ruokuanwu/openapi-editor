@@ -42,8 +42,9 @@
                             @click="schemaViewMode = 'json'">JSON</el-button>
                     </el-button-group>
                 </div>
-                <SchemaEditor v-if="schemaViewMode === 'visual'" :schema="schemaValue as SchemaObject"
-                    :readonly="!isEditing" />
+                <SchemaViewer v-if="schemaViewMode === 'visual' && !isEditing" :schema="schemaValue as SchemaObject" />
+                <SchemaEditor v-else-if="schemaViewMode === 'visual' && isEditing"
+                    :schema="schemaValue as SchemaObject" />
                 <pre v-else
                     class="mock-json">{{ JSON.stringify(generateMockData(schemaValue as SchemaObject, docStore.doc), null, 2) }}</pre>
             </template>
@@ -89,8 +90,10 @@
                             @click="paramViewMode = 'json'">JSON</el-button>
                     </el-button-group>
                 </div>
-                <SchemaEditor v-if="paramViewMode === 'visual' && ensureParamSchema(paramValue)"
-                    :schema="resolveSchema(_doc, resolveParameter(_doc, paramValue)?.schema)!" :readonly="!isEditing" />
+                <SchemaViewer v-if="paramViewMode === 'visual' && ensureParamSchema(paramValue) && !isEditing"
+                    :schema="resolveSchema(_doc, resolveParameter(_doc, paramValue)?.schema)!" />
+                <SchemaEditor v-else-if="paramViewMode === 'visual' && ensureParamSchema(paramValue) && isEditing"
+                    :schema="resolveSchema(_doc, resolveParameter(_doc, paramValue)?.schema)!" />
                 <pre v-else-if="paramViewMode === 'json' && ensureParamSchema(paramValue as ParameterObject)"
                     class="mock-json">{{ JSON.stringify(generateMockData(resolveSchema(_doc, paramValue.schema!), docStore.doc), null, 2) }}</pre>
             </template>
@@ -121,6 +124,7 @@ import { ref, computed, watch, toRaw } from 'vue';
 import { useDocStore } from '../store/useDocStore';
 import type { ComponentType } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
+import SchemaViewer from './SchemaViewer.vue';
 import ResponseBodyEditor from './ResponseBodyEditor.vue';
 import RequestBodyContentEditor from './RequestBodyContentEditor.vue';
 import type { OpenApiDoc, SchemaObject, ResponseObject, ParameterObject, RequestBodyObject } from '@shared/types';

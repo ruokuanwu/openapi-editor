@@ -36,10 +36,11 @@
                     </el-form>
 
                     <!-- Content types tabs -->
-                    <div v-if="resolveResponse(_doc,responses[code])!.content" class="content-section">
+                    <div v-if="resolveResponse(_doc, responses[code])!.content" class="content-section">
                         <div class="content-type-bar">
                             <el-radio-group v-model="activeContentType[code]" size="small">
-                                <el-radio-button v-for="ct in Object.keys(resolveResponse(_doc,responses[code])!.content!)" :key="ct"
+                                <el-radio-button
+                                    v-for="ct in Object.keys(resolveResponse(_doc, responses[code])!.content!)" :key="ct"
                                     :value="ct">
                                     {{ ct }}
                                 </el-radio-button>
@@ -47,42 +48,49 @@
                             <el-button size="small" :icon="Plus" plain @click="addContentTypeToResponse(code)" />
                         </div>
 
-                        <div v-if="activeContentType[code] && resolveResponse(_doc,responses[code])!.content![activeContentType[code]]"
+                        <div v-if="activeContentType[code] && resolveResponse(_doc, responses[code])!.content![activeContentType[code]]"
                             class="schema-section">
                             <div class="schema-section-header">
                                 <div class="schema-section-title">Schema</div>
                                 <div class="schema-section-actions">
                                     <el-button-group size="small">
-                                        <el-button :type="getSchemaViewMode(code) === 'visual' ? 'primary' : ''" size="small"
+                                        <el-button :type="getSchemaViewMode(code) === 'visual' ? 'primary' : ''"
+                                            size="small"
                                             @click="setSchemaViewMode(code, 'visual')">&#x8868;&#x683c;</el-button>
-                                        <el-button :type="getSchemaViewMode(code) === 'json' ? 'primary' : ''" size="small"
-                                            @click="setSchemaViewMode(code, 'json')">JSON</el-button>
+                                        <el-button :type="getSchemaViewMode(code) === 'json' ? 'primary' : ''"
+                                            size="small" @click="setSchemaViewMode(code, 'json')">JSON</el-button>
                                     </el-button-group>
                                     <el-tooltip
-                                        :content="isReferenceObject(resolveResponse(_doc,responses[code])!.content![activeContentType[code]].schema) ? '更换引用组件' : '引用组件'"
+                                        :content="isReferenceObject(resolveResponse(_doc, responses[code])!.content![activeContentType[code]].schema) ? '更换引用组件' : '引用组件'"
                                         placement="top" :show-after="500">
-                                        <el-button size="small" text :icon="Link"
-                                            @click="openRefPicker(code)">
-                                            {{ isReferenceObject(resolveResponse(_doc,responses[code])!.content![activeContentType[code]].schema) ? '更换组件' : '引用组件' }}
+                                        <el-button size="small" text :icon="Link" @click="openRefPicker(code)">
+                                            {{
+                                                isReferenceObject(resolveResponse(_doc, responses[code])!.content![activeContentType[code]].schema)
+                                            ? '更换组件' : '引用组件' }}
                                         </el-button>
                                     </el-tooltip>
                                     <el-tooltip
-                                        v-if="isReferenceObject(resolveResponse(_doc,responses[code])!.content![activeContentType[code]].schema)"
+                                        v-if="isReferenceObject(resolveResponse(_doc, responses[code])!.content![activeContentType[code]].schema)"
                                         content="解除引用（内联展开）" placement="top" :show-after="500">
-                                        <el-button size="small" text :icon="DocumentCopy"
-                                            @click="derefSchema(code)" />
+                                        <el-button size="small" text :icon="DocumentCopy" @click="derefSchema(code)" />
                                     </el-tooltip>
                                 </div>
                             </div>
                             <template v-if="getSchemaViewMode(code) === 'visual'">
-                                <SchemaEditor :schema="ensureSchema(resolveResponse(_doc,responses[code])!.content![activeContentType[code]])" />
+                                <SchemaViewer
+                                    v-if="isReferenceObject(resolveResponse(_doc, responses[code])!.content![activeContentType[code]].schema)"
+                                    :schema="resolveResponse(_doc, responses[code])!.content![activeContentType[code]].schema!" />
+                                <SchemaEditor v-else
+                                    :schema="ensureSchema(resolveResponse(_doc, responses[code])!.content![activeContentType[code]])" />
                             </template>
-                            <pre v-else class="mock-json">{{ JSON.stringify(generateMockData(ensureSchema(resolveResponse(_doc,responses[code])!.content![activeContentType[code]]), docStore.doc), null, 2) }}</pre>
+                            <pre v-else class="mock-json">{{
+                                JSON.stringify(generateMockData(ensureSchema(resolveResponse(_doc, responses[code])!.content![activeContentType[code]]),
+                docStore.doc), null, 2) }}</pre>
                         </div>
                     </div>
 
                     <!-- Add content type button when no content yet -->
-                    <el-button v-if="!resolveResponse(_doc,responses[code])!.content" size="small" :icon="Plus" plain
+                    <el-button v-if="!resolveResponse(_doc, responses[code])!.content" size="small" :icon="Plus" plain
                         @click="initResponseContent(code)">
                         添加响应体
                     </el-button>
@@ -93,8 +101,8 @@
         <!-- Ref Picker dialog -->
         <el-dialog v-model="showRefPicker" title="选择引用组件" width="400px" :append-to-body="true">
             <el-select v-model="pickedRef" filterable placeholder="搜索 Schema 名称" style="width: 100%">
-                <el-option v-for="name in docStore.allSchemaNames" :key="name"
-                    :label="name" :value="'#/components/schemas/' + name" />
+                <el-option v-for="name in docStore.allSchemaNames" :key="name" :label="name"
+                    :value="'#/components/schemas/' + name" />
             </el-select>
             <template #footer>
                 <el-button @click="showRefPicker = false">取消</el-button>
@@ -109,9 +117,10 @@ import { computed, reactive, ref } from 'vue';
 import { Plus, Delete, Link, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
-import type { SchemaObject, MediaTypeObject ,ReferenceObject} from '../types';
+import SchemaViewer from './SchemaViewer.vue';
+import type { SchemaObject, MediaTypeObject, ReferenceObject } from '../types';
 import { generateMockData } from '../utils/mockGenerator';
-import { resolveResponse,isReferenceObject} from '../utils/resolve';
+import { resolveResponse, isReferenceObject } from '../utils/resolve';
 
 const docStore = useDocStore();
 const _doc = computed(() => docStore.doc);
@@ -168,7 +177,7 @@ function renameCode(oldCode: string, newCode: string) {
 function initResponseContent(code: string) {
     const op = docStore.selectedOperation;
     if (!op?.responses?.[code]) { return; }
-    resolveResponse(_doc,op.responses[code])!.content = {
+    resolveResponse(_doc, op.responses[code])!.content = {
         'application/json': { schema: { type: 'object', properties: {} } },
     };
     activeContentType[code] = 'application/json';
@@ -177,9 +186,9 @@ function initResponseContent(code: string) {
 function addContentTypeToResponse(code: string) {
     const op = docStore.selectedOperation;
     if (!op?.responses?.[code]) { return; }
-    if (!resolveResponse(_doc,op.responses[code])!.content) { resolveResponse(_doc,op.responses[code])!.content = {}; }
+    if (!resolveResponse(_doc, op.responses[code])!.content) { resolveResponse(_doc, op.responses[code])!.content = {}; }
     const ct = 'application/json';
-    resolveResponse(_doc,op.responses[code])!.content![ct] = { schema: { type: 'object', properties: {} } };
+    resolveResponse(_doc, op.responses[code])!.content![ct] = { schema: { type: 'object', properties: {} } };
     activeContentType[code] = ct;
 }
 
@@ -196,7 +205,7 @@ const refPickerCode = ref('');
 function openRefPicker(code: string) {
     refPickerCode.value = code;
 
-    const schema = resolveResponse(_doc,responses.value[code])?.content?.[activeContentType[code]]?.schema;
+    const schema = resolveResponse(_doc, responses.value[code])?.content?.[activeContentType[code]]?.schema;
     if (isReferenceObject(schema)) {
         pickedRef.value = schema.$ref;
     } else {
@@ -209,7 +218,7 @@ function applyRefPick() {
     const code = refPickerCode.value;
     if (!pickedRef.value || !code) { showRefPicker.value = false; return; }
     const ct = activeContentType[code];
-    const resp = resolveResponse(_doc,responses.value[code])
+    const resp = resolveResponse(_doc, responses.value[code])
     if (!ct || !resp?.content?.[ct]) { showRefPicker.value = false; return; }
     resp.content![ct].schema = { $ref: pickedRef.value };
     showRefPicker.value = false;
@@ -218,14 +227,14 @@ function applyRefPick() {
 function derefSchema(code: string) {
     const ct = activeContentType[code];
     if (!ct) { return; }
-    let resp = resolveResponse(_doc,responses.value[code])
+    let resp = resolveResponse(_doc, responses.value[code])
     const schema = resp?.content?.[ct]?.schema;
     if (!isReferenceObject(schema)) { return; }
     const name = schema.$ref.match(/^#\/components\/schemas\/(.+)$/)?.[1];
     if (!name) { return; }
     const resolved = docStore.doc?.components?.schemas?.[name];
     if (!resolved) { return; }
-    if(resp!=null){
+    if (resp != null) {
         resp.content![ct].schema = JSON.parse(JSON.stringify(resolved));
     }
 }

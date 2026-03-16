@@ -53,7 +53,8 @@
                     </div>
                 </div>
                 <template v-if="schemaViewMode === 'visual'">
-                    <SchemaEditor :schema="activeSchema" />
+                    <SchemaViewer v-if="isReferenceObject(activeSchema)" :schema="activeSchema!" />
+                    <SchemaEditor v-else-if="activeSchema" :schema="activeSchema" />
                 </template>
                 <pre v-else
                     class="mock-json">{{ JSON.stringify(generateMockData(activeSchema, docStore.doc), null, 2) }}</pre>
@@ -97,6 +98,7 @@ import { ref, computed, watch } from 'vue';
 import { Plus, Delete, Link, DocumentCopy } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import SchemaEditor from './SchemaEditor.vue';
+import SchemaViewer from './SchemaViewer.vue';
 import { generateMockData } from '../utils/mockGenerator';
 import { resolveRequestBody } from '../utils/resolve';
 import { type SchemaObject, RequestBodyObject } from '@shared/types';

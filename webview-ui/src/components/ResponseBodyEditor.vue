@@ -16,7 +16,8 @@
 
         <div v-else-if="activeSchema">
             <div class="schema-section-title">Schema</div>
-            <SchemaEditor :schema="activeSchema" />
+            <SchemaViewer v-if="isReferenceObject(activeSchema)" :schema="activeSchema" />
+            <SchemaEditor v-else :schema="activeSchema" />
         </div>
 
         <!-- Add CT dialog -->
@@ -38,7 +39,9 @@
 import { ref, computed } from 'vue';
 import { Plus, Delete } from '@element-plus/icons-vue';
 import SchemaEditor from './SchemaEditor.vue';
+import SchemaViewer from './SchemaViewer.vue';
 import type { ResponseObject, SchemaObject } from '@shared/types';
+import { isReferenceObject } from '../utils/resolve';
 
 const COMMON = ['application/json', 'application/xml', 'text/plain'];
 

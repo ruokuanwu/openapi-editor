@@ -2,6 +2,7 @@
 // import { OpenAPIV3 } from 'openapi-types';
 import { type HeaderObject } from '../types';
 import type { SchemaObject, ResponseObject, RequestBodyObject, ParameterObject } from '@shared/types';
+import { unwrapComputedRef } from './object';
 
 export enum RefType {
     Schema = 'schema',
@@ -70,7 +71,7 @@ export function resolveRefAsType<T>(
 export function getObjectByRef(doc: any, ref: string): any {
     if (!ref.startsWith('#/')) throw new Error('只支持内部引用');
     const path = ref.slice(2).split('/');
-    let result: any = doc;
+    let result: any = unwrapComputedRef(doc); // 解包 doc，支持 ComputedRef
     for (const key of path) {
         result = result[key];
         if (result === undefined) throw new Error(`未找到引用: ${ref}`);
