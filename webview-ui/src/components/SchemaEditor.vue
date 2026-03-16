@@ -8,10 +8,6 @@
                     <template #header v-if="level === 0">属性名</template>
                     <template #default="{ row }">
                         <div v-if="row._expansion" class="prop-expansion-block">
-                            <!-- <div v-if="!isReferenceObject(row.schema)" class="prop-expansion-header">
-                                <el-button size="small" type="danger" text :icon="Delete"
-                                    @click="removeProperty(row.name)" />
-                            </div> -->
                             <template v-if="isReferenceObject(row.schema)">
                                 <SchemaViewer :schema="row.schema" :level="level + 1" />
                             </template>
