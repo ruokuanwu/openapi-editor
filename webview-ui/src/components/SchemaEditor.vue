@@ -8,6 +8,10 @@
                     <template #header v-if="level === 0">属性名</template>
                     <template #default="{ row }">
                         <div v-if="row._expansion" class="prop-expansion-block">
+                            <!-- <div v-if="!isReferenceObject(row.schema)" class="prop-expansion-header">
+                                <el-button size="small" type="danger" text :icon="Delete"
+                                    @click="removeProperty(row.name)" />
+                            </div> -->
                             <template v-if="isReferenceObject(row.schema)">
                                 <SchemaViewer :schema="row.schema" :level="level + 1" />
                             </template>
@@ -69,17 +73,15 @@
                     </template>
                 </el-table-column>
 
-                <!-- Expand / Delete -->
-                <el-table-column label="" width="44" align="center">
+                <!-- Expand -->
+                <el-table-column label="" width="70" align="center">
                     <template #default="{ row }">
-                        <template v-if="!row._expansion">
-                            <el-button
-                                v-if="isReferenceObject(row.schema) || (row.schema as any).type === 'object' || (row.schema as any).type === 'array' || (row.schema as any).properties"
-                                size="small" text :icon="expandedNames[row.name] ? ArrowDown : ArrowRight"
+                        <div style="display: flex; gap: 4px; justify-content: center;">
+                            <el-button size="small" text :icon="expandedNames[row.name] ? ArrowDown : ArrowRight"
                                 @click="expandedNames[row.name] = !expandedNames[row.name]" />
-                            <el-button v-else size="small" type="danger" text :icon="Delete"
+                            <el-button size="small" type="danger" text :icon="Delete"
                                 @click="removeProperty(row.name)" />
-                        </template>
+                        </div>
                     </template>
                 </el-table-column>
             </el-table>
@@ -421,6 +423,12 @@ function removeEnumValue(i: number) {
     padding: 8px 8px 8px 16px;
     border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
     border-bottom: 1px solid var(--vscode-panel-border, #e4e7ed);
+}
+
+.prop-expansion-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 4px;
 }
 
 .prop-expansion-label {
