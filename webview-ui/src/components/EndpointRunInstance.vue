@@ -5,19 +5,9 @@
             <span :class="['method-badge', `method-${method}`]">{{ method.toUpperCase() }}</span>
             <span class="ri-path">{{ path }}</span>
             <div class="ri-header-actions">
-                <el-button
-                    type="primary"
-                    size="small"
-                    :icon="Promotion"
-                    :loading="runStore.loading"
-                    @click="doSend"
-                >发送</el-button>
-                <el-button
-                    type="warning"
-                    size="small"
-                    :icon="Download"
-                    @click="doExportCurl"
-                >导出</el-button>
+                <el-button type="primary" size="small" :icon="Promotion" :loading="runStore.loading"
+                    @click="doSend">发送</el-button>
+                <el-button type="warning" size="small" :icon="Download" @click="doExportCurl">导出</el-button>
             </div>
         </div>
 
@@ -43,16 +33,22 @@
 
                     <el-table-column label="名称" min-width="100">
                         <template #default="{ row }">
-                            <el-input
-                                v-if="row.isCustom"
-                                v-model="row.name"
-                                size="small"
-                                placeholder="参数名"
-                            />
+                            <el-input v-if="row.isCustom" v-model="row.name" size="small" placeholder="参数名" />
                             <span v-else class="ri-param-name">
                                 {{ row.name }}
-                                <el-tag v-if="row.required" type="danger" size="small" class="ri-required-tag">必填</el-tag>
+                                <el-tag v-if="row.required" type="danger" size="small"
+                                    class="ri-required-tag">必填</el-tag>
                             </span>
+                        </template>
+                    </el-table-column>
+
+                    <el-table-column label="类型" width="120">
+                        <template #default="{ row }">
+                            <el-select v-if="row.isCustom" v-model="row.type" size="small" style="width: 100%">
+                                <el-option v-for="type in NormalSchemaObjectTypes" :key="type" :label="type"
+                                    :value="type" />
+                            </el-select>
+                            <span v-else class="ri-param-type">{{ row.type }}</span>
                         </template>
                     </el-table-column>
 
@@ -64,14 +60,8 @@
 
                     <el-table-column label="" width="40">
                         <template #default="{ $index, row }">
-                            <el-button
-                                v-if="row.isCustom"
-                                size="small"
-                                type="danger"
-                                text
-                                :icon="Delete"
-                                @click="removeParam($index)"
-                            />
+                            <el-button v-if="row.isCustom" size="small" type="danger" text :icon="Delete"
+                                @click="removeParam($index)" />
                         </template>
                     </el-table-column>
                 </el-table>
@@ -84,12 +74,7 @@
                     <div class="ri-body-controls">
                         <!-- Content-Type selector -->
                         <el-select v-model="body.contentType" size="small" style="width: 190px">
-                            <el-option
-                                v-for="ct in availableContentTypes"
-                                :key="ct"
-                                :label="ct"
-                                :value="ct"
-                            />
+                            <el-option v-for="ct in availableContentTypes" :key="ct" :label="ct" :value="ct" />
                             <template v-if="!availableContentTypes.includes(body.contentType)">
                                 <el-option :label="body.contentType" :value="body.contentType" />
                             </template>
@@ -105,13 +90,8 @@
 
                 <!-- Text editor -->
                 <div v-if="bodyEditorMode === 'text'" class="ri-textarea-wrapper">
-                    <el-input
-                        v-model="body.textContent"
-                        type="textarea"
-                        :autosize="{ minRows: 6, maxRows: 20 }"
-                        placeholder='{"key": "value"}'
-                        class="ri-textarea"
-                    />
+                    <el-input v-model="body.textContent" type="textarea" :autosize="{ minRows: 6, maxRows: 20 }"
+                        placeholder='{"key": "value"}' class="ri-textarea" />
                 </div>
 
                 <!-- Form editor -->
@@ -119,36 +99,21 @@
                     <el-table :data="formRows" size="small" class="ri-form-table">
                         <el-table-column label="字段" min-width="120">
                             <template #default="{ row }">
-                                <el-input
-                                    v-if="row.isCustom"
-                                    v-model="row.key"
-                                    size="small"
-                                    placeholder="字段名"
-                                    @change="onFormKeyChange(row)"
-                                />
+                                <el-input v-if="row.isCustom" v-model="row.key" size="small" placeholder="字段名"
+                                    @change="onFormKeyChange(row)" />
                                 <span v-else class="ri-param-name">{{ row.key }}</span>
                             </template>
                         </el-table-column>
                         <el-table-column label="值" min-width="160">
                             <template #default="{ row }">
-                                <el-input
-                                    v-model="row.value"
-                                    size="small"
-                                    placeholder="字段值"
-                                    @change="onFormValueChange(row)"
-                                />
+                                <el-input v-model="row.value" size="small" placeholder="字段值"
+                                    @change="onFormValueChange(row)" />
                             </template>
                         </el-table-column>
                         <el-table-column label="" width="40">
                             <template #default="{ row }">
-                                <el-button
-                                    v-if="row.isCustom"
-                                    size="small"
-                                    type="danger"
-                                    text
-                                    :icon="Delete"
-                                    @click="removeFormRow(row.key)"
-                                />
+                                <el-button v-if="row.isCustom" size="small" type="danger" text :icon="Delete"
+                                    @click="removeFormRow(row.key)" />
                             </template>
                         </el-table-column>
                     </el-table>
@@ -181,10 +146,17 @@ import { buildRunRequestFromInstance } from '../utils/requestBuilder';
 import { buildCurl } from '../utils/exportUtils';
 import vscode from '../vscode';
 import type { ParameterIn } from '../types';
-import { resolveRequestBody,resolveSchema } from '../utils/resolve';
+import { NormalSchemaObjectTypes } from '@shared/types';
+import { resolveRequestBody, resolveSchema } from '../utils/resolve';
 
+/**
+ * 参数位置类型定义
+ */
 const PARAM_LOCATIONS: ParameterIn[] = ['query', 'header', 'path', 'cookie'];
 
+/**
+ * 常用的 Content-Type 类型列表
+ */
 const COMMON_CONTENT_TYPES = [
     'application/json',
     'application/x-www-form-urlencoded',
@@ -192,14 +164,47 @@ const COMMON_CONTENT_TYPES = [
     'text/plain',
 ];
 
+/**
+ * 文档存储
+ */
 const docStore = useDocStore();
+
+/**
+ * 文档数据的计算属性（用于响应式访问）
+ */
 const _doc = computed(() => docStore.doc);
+
+/**
+ * 配置存储
+ */
 const configStore = useConfigStore();
+
+/**
+ * 请求执行存储
+ */
 const runStore = useRunStore();
+
+/**
+ * 当前选中的操作（API 端点）
+ */
 const op = computed(() => docStore.selectedOperation);
+
+/**
+ * HTTP 方法
+ */
 const method = computed(() => docStore.selectedMethod ?? 'get');
+
+/**
+ * API 路径
+ */
+/**
+ * API 路径
+ */
 const path = computed(() => docStore.selectedPath ?? '');
 
+/**
+ * 监听选中的操作和文档变化，初始化实例数据
+ */
 watch(
     [op, path, () => docStore.doc],
     ([opVal, pathVal, docVal]) => {
@@ -211,15 +216,28 @@ watch(
 );
 
 
-// Proxy store state for convenient template access
+// ========== 计算属性 ==========
+
+/**
+ * 参数列表的代理访问
+ */
 const params = computed(() => runStore.instanceParams);
+
+/**
+ * 请求体的代理访问
+ */
 const body = computed(() => runStore.instanceBody);
+
+/**
+ * 请求体编辑器模式（文本/表单）
+ * 在模式切换时自动转换数据格式
+ */
 const bodyEditorMode = computed({
     get: () => runStore.bodyEditorMode,
     set: (v) => {
-        // Sync between text and form on mode switch
+        // 文本和表单模式切换时的数据同步
         if (v === 'form' && body.value) {
-            // text → form: parse JSON and populate formContent
+            // 文本 → 表单：解析 JSON 并填充 formContent
             try {
                 const parsed = JSON.parse(body.value.textContent);
                 if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
@@ -229,9 +247,9 @@ const bodyEditorMode = computed({
                     }
                     body.value.formContent = fc;
                 }
-            } catch { /* keep existing formContent */ }
+            } catch { /* 保持现有的 formContent */ }
         } else if (v === 'text' && body.value) {
-            // form → text: serialize formContent to JSON
+            // 表单 → 文本：将 formContent 序列化为 JSON
             const formObj: Record<string, unknown> = {};
             for (const [k, val] of Object.entries(body.value.formContent)) {
                 try { formObj[k] = JSON.parse(val); } catch { formObj[k] = val; }
@@ -244,7 +262,9 @@ const bodyEditorMode = computed({
     },
 });
 
-// Available content types (from schema definition + current selection)
+/**
+ * 可用的 Content-Type 列表（从 schema 定义和常用类型中获取）
+ */
 const availableContentTypes = computed(() => {
     const op = docStore.selectedOperation;
     const requestBody = resolveRequestBody(_doc, op?.requestBody);
@@ -253,31 +273,41 @@ const availableContentTypes = computed(() => {
     return combined;
 });
 
-// Form rows: combines schema-defined fields (isCustom=false) + user-added fields (isCustom=true)
+/**
+ * Form 行数据的接口定义
+ * 组合了 schema 定义的字段（isCustom=false）和用户添加的字段（isCustom=true）
+ */
 interface FormRow { key: string; value: string; isCustom: boolean }
 
+/**
+ * 从请求体 schema 中获取属性键集合
+ */
 const schemaKeys = computed(() => {
     const op = docStore.selectedOperation;
     const requestBody = resolveRequestBody(_doc, op?.requestBody);
     if (!body.value || !requestBody?.content) { return new Set<string>(); }
     const media = requestBody.content[body.value.contentType]
         ?? Object.values(requestBody.content)[0];
-    const schema = resolveSchema(_doc,media?.schema);
+    const schema = resolveSchema(_doc, media?.schema);
     if (!schema?.properties) { return new Set<string>(); }
     return new Set(Object.keys(schema.properties));
 });
 
+/**
+ * 表单行数据计算属性
+ * 合并 schema 定义的字段和自定义字段
+ */
 const formRows = computed((): FormRow[] => {
     if (!body.value) { return []; }
     const rows: FormRow[] = [];
     const fc = body.value.formContent;
     const sk = schemaKeys.value;
 
-    // Schema-defined fields first
+    // 先添加 schema 定义的字段
     for (const key of sk) {
         rows.push({ key, value: fc[key] ?? '', isCustom: false });
     }
-    // Custom fields
+    // 再添加自定义字段
     for (const key of Object.keys(fc)) {
         if (!sk.has(key)) {
             rows.push({ key, value: fc[key], isCustom: true });
@@ -286,12 +316,20 @@ const formRows = computed((): FormRow[] => {
     return rows;
 });
 
+/**
+ * 处理表单字段值变化的函数
+ * @param row - 被修改的表单行
+ */
 function onFormValueChange(row: FormRow) {
     if (body.value) {
         body.value.formContent[row.key] = row.value;
     }
 }
 
+/**
+ * 处理表单字段名变化的函数
+ * @param row - 被修改的表单行
+ */
 function onFormKeyChange(row: FormRow) {
     if (body.value && row.key) {
         // Rename key in formContent
@@ -302,6 +340,9 @@ function onFormKeyChange(row: FormRow) {
     }
 }
 
+/**
+ * 添加新的表单行
+ */
 function addFormRow() {
     if (body.value) {
         const newKey = `field${Object.keys(body.value.formContent).length + 1}`;
@@ -309,12 +350,19 @@ function addFormRow() {
     }
 }
 
+/**
+ * 删除指定的表单行
+ * @param key - 要删除的字段名
+ */
 function removeFormRow(key: string) {
     if (body.value) {
         delete body.value.formContent[key];
     }
 }
 
+/**
+ * 添加自定义参数到参数列表中
+ */
 function addCustomParam() {
     runStore.instanceParams.push({
         name: '',
@@ -323,13 +371,21 @@ function addCustomParam() {
         description: '',
         value: '',
         isCustom: true,
+        type: 'string',
     });
 }
 
+/**
+ * 从参数列表中移除指定索引的参数
+ * @param index - 要移除的参数索引
+ */
 function removeParam(index: number) {
     runStore.instanceParams.splice(index, 1);
 }
 
+/**
+ * 为当前接口添加请求体
+ */
 function addBody() {
     runStore.instanceBody = {
         contentType: 'application/json',
@@ -338,6 +394,10 @@ function addBody() {
     };
 }
 
+/**
+ * 发送 HTTP 请求
+ * 构建请求并通过 VSCode 消息发送到后端执行
+ */
 async function doSend() {
     const m = method.value;
     const p = path.value;
@@ -362,6 +422,9 @@ async function doSend() {
     vscode.postMessage({ type: 'runRequest', id, method: req.method, url: req.url, headers: req.headers, body: req.body });
 }
 
+/**
+ * 导出当前请求为 cURL 命令并复制到剪贴板
+ */
 async function doExportCurl() {
     const op = docStore.selectedOperation;
     const p = path.value;
@@ -475,6 +538,16 @@ async function doExportCurl() {
     font-size: 11px;
 }
 
+.ri-param-type {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--vscode-badge-background, #e0e0e0);
+    color: var(--vscode-badge-foreground, #333);
+    font-size: 11px;
+    font-family: var(--vscode-editor-font-family, monospace);
+}
+
 .ri-param-name {
     display: flex;
     align-items: center;
@@ -518,12 +591,34 @@ async function doExportCurl() {
     flex-shrink: 0;
 }
 
-.method-get    { background: #e6f4ff; color: #0070cc; }
-.method-post   { background: #e6ffe6; color: #007a29; }
-.method-put    { background: #fff3e0; color: #b85c00; }
-.method-delete { background: #ffe6e6; color: #cc0000; }
-.method-patch  { background: #f0e6ff; color: #6600cc; }
-.method-head, .method-options, .method-trace {
+.method-get {
+    background: #e6f4ff;
+    color: #0070cc;
+}
+
+.method-post {
+    background: #e6ffe6;
+    color: #007a29;
+}
+
+.method-put {
+    background: #fff3e0;
+    color: #b85c00;
+}
+
+.method-delete {
+    background: #ffe6e6;
+    color: #cc0000;
+}
+
+.method-patch {
+    background: #f0e6ff;
+    color: #6600cc;
+}
+
+.method-head,
+.method-options,
+.method-trace {
     background: var(--vscode-badge-background, #e0e0e0);
     color: var(--vscode-badge-foreground, #333);
 }

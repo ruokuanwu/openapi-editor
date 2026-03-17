@@ -75,6 +75,7 @@ export const useRunStore = defineStore('run', () => {
                 description: p.description ?? '',
                 value,
                 isCustom: false,
+                type: s?.type ?? 'string',
             };
         });
         instanceParams.value = params;

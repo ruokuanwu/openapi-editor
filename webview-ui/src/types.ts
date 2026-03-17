@@ -1,16 +1,9 @@
 // Shared type definitions – mirrors src/shared/types.ts in the extension host.
 
 import { OpenAPIV3_1 } from 'openapi-types';
-import { OperationObject, ParameterObject, SchemaObject, ResponseObject, RequestBodyObject, OpenApiDoc } from '@shared/types';
+import { OperationObject, ParameterObject, SchemaObject, ResponseObject, RequestBodyObject, OpenApiDoc, NormalSchemaObjectType } from '@shared/types';
 
 
-// export type OpenApiDoc = OpenAPIV3_1.Document;
-// export type OperationObject = OpenAPIV3_1.OperationObject;
-// export type ResponseObject = OpenAPIV3_1.ResponseObject;
-// export type RequestBodyObject = OpenAPIV3_1.RequestBodyObject;
-// export type SchemaObject = OpenAPIV3_1.SchemaObject;
-// export type ReferenceObject = OpenAPIV3_1.ReferenceObject;
-// export type ParameterObject = OpenAPIV3_1.ParameterObject;
 
 export interface InfoObject {
     title: string;
@@ -43,17 +36,7 @@ export interface PathItemObject {
     servers?: ServerObject[];
 }
 
-// export interface OperationObject {
-//     operationId?: string;
-//     summary?: string;
-//     description?: string;
-//     tags?: string[];
-//     parameters?: ParameterObject[];
-//     requestBody?: RequestBodyObject;
-//     responses?: ResponsesObject;
-//     deprecated?: boolean;
-//     security?: Record<string, string[]>[];
-// }
+
 
 export type ParameterIn = 'path' | 'query' | 'header' | 'cookie';
 
@@ -156,6 +139,7 @@ export interface RunInstanceParam {
     description: string;
     value: string;
     isCustom: boolean;
+    type: NormalSchemaObjectType;
 }
 
 export interface RunInstanceBody {

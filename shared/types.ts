@@ -10,6 +10,10 @@ export type RequestBodyObject = OpenAPIV3_1.RequestBodyObject;
 export type SchemaObject = OpenAPIV3_1.SchemaObject;
 export type ReferenceObject = OpenAPIV3_1.ReferenceObject;
 export type ParameterObject = OpenAPIV3_1.ParameterObject;
+export const NormalSchemaObjectTypes = ['boolean', 'string', 'number', 'integer'] as const;
+export type NormalSchemaObjectType = typeof NormalSchemaObjectTypes[number];
+
+
 
 export interface InfoObject {
     title: string;
@@ -42,36 +46,13 @@ export interface PathItemObject {
     servers?: ServerObject[];
 }
 
-// export interface OperationObject {
-//     operationId?: string;
-//     summary?: string;
-//     description?: string;
-//     tags?: string[];
-//     parameters?: ParameterObject[];
-//     requestBody?: RequestBodyObject;
-//     responses?: ResponsesObject;
-//     deprecated?: boolean;
-//     security?: Record<string, string[]>[];
-// }
+
 
 export type ParameterIn = 'path' | 'query' | 'header' | 'cookie';
 
-// export interface ParameterObject {
-//     name: string;
-//     in: ParameterIn;
-//     description?: string;
-//     required?: boolean;
-//     deprecated?: boolean;
-//     schema?: SchemaObject;
-// }
 
 export type HeaderObject = OpenAPIV3_1.HeaderObject;
 
-// export interface RequestBodyObject {
-//     description?: string;
-//     required?: boolean;
-//     content: Record<string, MediaTypeObject>;
-// }
 
 export interface MediaTypeObject {
     schema?: SchemaObject;
@@ -80,39 +61,6 @@ export interface MediaTypeObject {
 
 export type ResponsesObject = Record<string, ResponseObject>;
 
-// export interface ResponseObject {
-//     description: string;
-//     content?: Record<string, MediaTypeObject>;
-//     headers?: Record<string, unknown>;
-// }
-
-// export interface SchemaObject {
-//     type?: string;
-//     format?: string;
-//     title?: string;
-//     description?: string;
-//     default?: unknown;
-//     example?: unknown;
-//     enum?: unknown[];
-//     properties?: Record<string, SchemaObject>;
-//     required?: string[];
-//     items?: SchemaObject;
-//     additionalProperties?: SchemaObject | boolean;
-//     nullable?: boolean;
-//     readOnly?: boolean;
-//     writeOnly?: boolean;
-//     $ref?: string;
-//     allOf?: SchemaObject[];
-//     anyOf?: SchemaObject[];
-//     oneOf?: SchemaObject[];
-//     minimum?: number;
-//     maximum?: number;
-//     minLength?: number;
-//     maxLength?: number;
-//     pattern?: string;
-//     minItems?: number;
-//     maxItems?: number;
-// }
 
 export interface ComponentsObject {
     schemas?: Record<string, SchemaObject>;
@@ -199,6 +147,7 @@ export interface RunInstanceParam {
     description: string;
     value: string;
     isCustom: boolean;
+    type: string;
 }
 
 export interface RunInstanceBody {
