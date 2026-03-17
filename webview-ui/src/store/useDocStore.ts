@@ -4,12 +4,12 @@ import type {
     OpenApiDoc,
     HttpMethod,
     OperationObject,
-    TagObject,
     SchemaObject,
     ResponseObject,
     ParameterObject,
     RequestBodyObject,
-} from '../types';
+} from '@shared/types';
+import type { TagObject } from '../types';
 import { HTTP_METHODS } from '../types';
 
 export type ComponentType = 'schemas' | 'responses' | 'parameters' | 'requestBodies';

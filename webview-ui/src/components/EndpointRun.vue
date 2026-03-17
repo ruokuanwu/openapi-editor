@@ -1,15 +1,15 @@
 <template>
     <div class="run-tab-layout" ref="runTabLayout">
-        <RunInstance class="run-instance-pane" :style="{ width: runPaneWidth + 'px' }" />
+        <EndpointRunInstance class="run-instance-pane" :style="{ width: runPaneWidth + 'px' }" />
         <div class="run-resizer" @mousedown.prevent="onRunResizerMousedown" />
-        <RunResult class="run-result-pane" />
+        <EndpointRunResult class="run-result-pane" />
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import RunInstance from './RunInstance.vue';
-import RunResult from './RunResult.vue';
+import EndpointRunInstance from './EndpointRunInstance.vue';
+import EndpointRunResult from './EndpointRunResult.vue';
 
 const runTabLayout = ref<HTMLElement | null>(null);
 const runPaneWidth = ref(380);
