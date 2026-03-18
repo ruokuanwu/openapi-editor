@@ -30,16 +30,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useDocStore } from '../store/useDocStore';
+import { OperationObject } from '@shared/types';
 
+const props = defineProps<{
+    operation?: OperationObject | null;
+}>();
+
+const op = computed(() => props.operation);
 const docStore = useDocStore();
 
-// Directly access the reactive operation object in the store
-const op = computed(() => {
-    if (!docStore.doc?.paths || !docStore.selectedPath || !docStore.selectedMethod) {
-        return null;
-    }
-    return docStore.doc.paths[docStore.selectedPath]?.[docStore.selectedMethod] ?? null;
-});
 
 // When user creates a new tag via the select, register it in doc.tags
 function syncNewTags(selectedTags: string[]) {

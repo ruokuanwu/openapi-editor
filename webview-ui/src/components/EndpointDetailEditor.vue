@@ -26,7 +26,7 @@
 
         <el-tabs v-model="activeTab" class="editor-tabs">
             <el-tab-pane label="概览" name="overview">
-                <EndpointMetaEditor />
+                <EndpointMetaEditor :operation="operation" />
             </el-tab-pane>
 
             <el-tab-pane name="params">
