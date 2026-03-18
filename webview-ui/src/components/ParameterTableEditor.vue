@@ -40,6 +40,12 @@
                 </template>
             </el-table-column>
 
+            <el-table-column label="默认值" min-width="120">
+                <template #default="{ row }">
+                    <el-input v-model="row.schema!.default" size="small" placeholder="默认值" />
+                </template>
+            </el-table-column>
+
             <el-table-column label="描述" min-width="160">
                 <template #default="{ row }">
                     <el-input v-model="row.description" size="small" placeholder="说明" />

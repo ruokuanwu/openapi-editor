@@ -13,59 +13,7 @@
 
         <div class="ri-body">
             <!-- Parameters section -->
-            <div class="ri-section">
-                <div class="ri-section-header">
-                    <span class="ri-section-title">参数</span>
-                    <el-button size="small" text :icon="Plus" @click="addCustomParam">添加自定义参数</el-button>
-                </div>
-
-                <div v-if="params.length === 0" class="ri-empty-hint">暂无参数</div>
-
-                <el-table v-else :data="params" size="small" class="ri-param-table">
-                    <el-table-column label="位置" width="100">
-                        <template #default="{ row }">
-                            <el-select v-if="row.isCustom" v-model="row.in" size="small" style="width: 100%">
-                                <el-option v-for="loc in PARAM_LOCATIONS" :key="loc" :label="loc" :value="loc" />
-                            </el-select>
-                            <span v-else class="ri-param-in-tag">{{ row.in }}</span>
-                        </template>
-                    </el-table-column>
-
-                    <el-table-column label="名称" min-width="100">
-                        <template #default="{ row }">
-                            <el-input v-if="row.isCustom" v-model="row.name" size="small" placeholder="参数名" />
-                            <span v-else class="ri-param-name">
-                                {{ row.name }}
-                                <el-tag v-if="row.required" type="danger" size="small"
-                                    class="ri-required-tag">必填</el-tag>
-                            </span>
-                        </template>
-                    </el-table-column>
-
-                    <el-table-column label="类型" width="120">
-                        <template #default="{ row }">
-                            <el-select v-if="row.isCustom" v-model="row.type" size="small" style="width: 100%">
-                                <el-option v-for="type in NormalSchemaObjectTypes" :key="type" :label="type"
-                                    :value="type" />
-                            </el-select>
-                            <span v-else class="ri-param-type">{{ row.type }}</span>
-                        </template>
-                    </el-table-column>
-
-                    <el-table-column label="值" min-width="130">
-                        <template #default="{ row }">
-                            <el-input v-model="row.value" size="small" :placeholder="row.description || '参数值'" />
-                        </template>
-                    </el-table-column>
-
-                    <el-table-column label="" width="40">
-                        <template #default="{ $index, row }">
-                            <el-button v-if="row.isCustom" size="small" type="danger" text :icon="Delete"
-                                @click="removeParam($index)" />
-                        </template>
-                    </el-table-column>
-                </el-table>
-            </div>
+            <RunParamTable :parameters="op?.parameters" :doc="docStore.doc ?? null" v-model="localParams" />
 
             <!-- Request Body section -->
             <div v-if="body !== null" class="ri-section">
@@ -102,8 +50,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, toRaw } from 'vue';
-import { Plus, Delete, Promotion, Download } from '@element-plus/icons-vue';
+import { computed, ref, watch, toRaw } from 'vue';
+import { Promotion, Download, Plus } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useDocStore } from '../store/useDocStore';
 import { useConfigStore } from '../store/useConfigStore';
@@ -111,14 +59,9 @@ import { useRunStore } from '../store/useRunStore';
 import { buildRunRequestFromInstance } from '../utils/requestBuilder';
 import { buildCurl } from '../utils/exportUtils';
 import vscode from '../vscode';
-import type { ParameterIn } from '../types';
-import { NormalSchemaObjectTypes } from '@shared/types';
+import type { RunInstanceParam } from '../types';
 import { resolveRequestBody } from '../utils/resolve';
-
-/**
- * 参数位置类型定义
- */
-const PARAM_LOCATIONS: ParameterIn[] = ['query', 'header', 'path', 'cookie'];
+import RunParamTable from './RunParamTable.vue';
 
 /**
  * 常用的 Content-Type 类型列表
@@ -168,8 +111,11 @@ const method = computed(() => docStore.selectedMethod ?? 'get');
  */
 const path = computed(() => docStore.selectedPath ?? '');
 
+/** 用户可编辑的参数列表（由 RunParamTable 通过 v-model 维护） */
+const localParams = ref<RunInstanceParam[]>([]);
+
 /**
- * 监听选中的操作和文档变化，初始化实例数据
+ * 监听选中的操作和文档变化，初始化请求体数据
  */
 watch(
     [op, path, () => docStore.doc],
@@ -180,14 +126,6 @@ watch(
     },
     { immediate: true }
 );
-
-
-// ========== 计算属性 ==========
-
-/**
- * 参数列表的代理访问
- */
-const params = computed(() => runStore.instanceParams);
 
 /**
  * 请求体的代理访问
@@ -204,29 +142,6 @@ const availableContentTypes = computed(() => {
     const combined = [...new Set([...ctFromOp, ...COMMON_CONTENT_TYPES])];
     return combined;
 });
-
-/**
- * 添加自定义参数到参数列表中
- */
-function addCustomParam() {
-    runStore.instanceParams.push({
-        name: '',
-        in: 'query',
-        required: false,
-        description: '',
-        value: '',
-        isCustom: true,
-        type: 'string',
-    });
-}
-
-/**
- * 从参数列表中移除指定索引的参数
- * @param index - 要移除的参数索引
- */
-function removeParam(index: number) {
-    runStore.instanceParams.splice(index, 1);
-}
 
 /**
  * 为当前接口添加请求体
@@ -250,7 +165,7 @@ async function doSend() {
     if (!doc) { return; }
 
     const req = buildRunRequestFromInstance(
-        runStore.instanceParams,
+        localParams.value,
         runStore.instanceBody,
         'text',
         p,
