@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { RunResult, RunRequest, RunInstanceParam, RunInstanceBody, ParameterIn } from '../types';
-import type { OperationObject, OpenApiDoc, SchemaObject } from '@shared/types';
+import type { OperationObject, OpenApiDoc, SchemaObject, NormalSchemaObjectType } from '@shared/types';
 import { generateSchemaExample, buildFormContentFromSchema } from '../utils/requestBuilder';
 import { generateMockData } from '../utils/mockGenerator';
 import { resolveSchema, resolveParameter, resolveRequestBody } from '../utils/resolve';
@@ -75,7 +75,7 @@ export const useRunStore = defineStore('run', () => {
                 description: p.description ?? '',
                 value,
                 isCustom: false,
-                type: s?.type ?? 'string',
+                type: s?.type as NormalSchemaObjectType,
             };
         });
         instanceParams.value = params;
