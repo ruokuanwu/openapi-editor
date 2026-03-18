@@ -36,7 +36,7 @@ function resolveRef(ref: string, doc: OpenApiDoc): SchemaObject | undefined {
 function generateSchemaValue(schema: SchemaObject, doc: OpenApiDoc, depth = 0): unknown {
     if (depth > 5) { return null; } // prevent infinite recursion
 
-    const resolved = resolveSchema(schema, doc);
+    const resolved = resolveSchema(doc, schema);
     if (resolved === undefined) { return null; }
 
     if (resolved.example !== undefined) { return resolved.example; }
@@ -74,11 +74,11 @@ export function generateSchemaExample(schema: SchemaObject, doc: OpenApiDoc): st
  * Only one level deep — nested objects become empty string placeholders.
  */
 export function buildFormContentFromSchema(schema: SchemaObject, doc: OpenApiDoc): Record<string, string> {
-    const resolved = resolveSchema(schema, doc);
+    const resolved = resolveSchema(doc, schema);
     if (resolved === undefined) { return {}; }
     const result: Record<string, string> = {};
     for (const [key, prop] of Object.entries(resolved.properties ?? {})) {
-        const val = schemaValue(resolveSchema(prop, doc));
+        const val = schemaValue(resolveSchema(doc, prop));
         result[key] = val ?? '';
     }
     return result;
@@ -168,7 +168,7 @@ export function buildRunRequest(
         if (contentTypes.length > 0) {
             const firstContentType = contentTypes[0];
             const mediaType = requestBody.content[firstContentType];
-            const s = mediaType?.schema ? resolveSchema(mediaType.schema, doc) : undefined;
+            const s = mediaType?.schema ? resolveSchema(doc, mediaType.schema) : undefined;
             if (s !== undefined) {
                 body = typeof s === 'string'
                     ? s
