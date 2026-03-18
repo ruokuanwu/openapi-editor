@@ -9,14 +9,14 @@
                     <template #default="{ row }">
                         <div v-if="row._expansion" class="prop-expansion-block">
                             <template v-if="isReferenceObject(row.schema)">
-                                <SchemaViewer :schema="row.schema" :level="level + 1" />
+                                <SchemaViewer :schema="row.schema" :level="level + 1" :doc="effectiveDoc" />
                             </template>
                             <template
                                 v-else-if="(row.schema as any).type === 'array' && isReferenceObject((row.schema as any).items)">
-                                <SchemaViewer :schema="(row.schema as any).items" :level="level + 1" />
+                                <SchemaViewer :schema="(row.schema as any).items" :level="level + 1" :doc="effectiveDoc" />
                             </template>
                             <template v-else>
-                                <SchemaEditor :schema="(row.schema as SchemaObject)" :level="level + 1" />
+                                <SchemaEditor :schema="(row.schema as SchemaObject)" :level="level + 1" :doc="effectiveDoc" />
                             </template>
                         </div>
                         <span v-else-if="isReferenceObject(row.schema)" class="ro-text">{{ row.name }}</span>
@@ -29,9 +29,10 @@
                     <template #default="{ row }">
                         <template v-if="!row._expansion">
                             <el-tag v-if="isReferenceObject(row.schema)" size="small" type="info" class="ref-type-tag">
-                                $ref
+                                {{ refShortName(row.schema) }}
                             </el-tag>
-                            <el-select v-else v-model="(row.schema as any).type" size="small" style="width: 100%">
+                            <el-select v-else v-model="(row.schema as any).type" size="small" style="width: 100%"
+                                @change="onTypeChange(row.name, (row.schema as any).type)">
                                 <el-option v-for="t in SCHEMA_TYPES" :key="t" :label="t" :value="t" />
                             </el-select>
                         </template>
@@ -69,12 +70,12 @@
                     </template>
                 </el-table-column>
 
-                <!-- Expand -->
+                <!-- Expand + Delete -->
                 <el-table-column label="" width="70" align="center">
                     <template #default="{ row }">
                         <div style="display: flex; gap: 4px; justify-content: center;">
                             <el-button size="small" text :icon="expandedNames[row.name] ? ArrowDown : ArrowRight"
-                                @click="expandedNames[row.name] = !expandedNames[row.name]" />
+                                @click="toggleExpanded(row.name)" />
                             <el-button size="small" type="danger" text :icon="Delete"
                                 @click="removeProperty(row.name)" />
                         </div>
@@ -92,19 +93,17 @@
 
         <!-- ── Array ─────────────────────────────────────────────────────── -->
         <template v-else-if="(schema as any).type === 'array'">
-            <!-- items 存在时：内容区 + 右侧红色垃圾桶 -->
             <div v-if="(schema as any).items" class="array-items-wrapper">
                 <div class="array-items-content">
                     <SchemaViewer v-if="isReferenceObject((schema as any).items)" :schema="(schema as any).items"
-                        :level="level + 1" />
-                    <SchemaEditor v-else :schema="(schema as any).items" :level="level + 1" />
+                        :level="level + 1" :doc="effectiveDoc" />
+                    <SchemaEditor v-else :schema="(schema as any).items" :level="level + 1" :doc="effectiveDoc" />
                 </div>
                 <div class="array-items-delete">
                     <el-button size="small" type="danger" text :icon="Delete" @click="removeItems" />
                 </div>
             </div>
 
-            <!-- items 尚未定义时：点击整行添加 -->
             <div v-else class="array-add-row" @click="initItems">
                 <el-icon class="array-add-icon">
                     <Plus />
@@ -126,12 +125,13 @@
                 <div v-if="comboExpanded[key]" class="nested-block">
                     <div v-for="(item, i) in (schema as any)[key]" :key="(i as number)" class="combo-item">
                         <el-tag size="small" style="margin-bottom:4px">{{ (i as number) + 1 }}</el-tag>
-                        <SchemaEditor :schema="item" :level="level + 1" />
+                        <SchemaEditor :schema="item" :level="level + 1" :doc="effectiveDoc" />
                     </div>
                 </div>
             </div>
         </template>
 
+        <!-- ── Leaf (primitive / untyped) ────────────────────────────────── -->
         <template v-else>
             <el-form :model="schema" label-width="70px" label-position="left" size="small">
                 <el-form-item label="类型">
@@ -168,8 +168,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 import { Plus, Delete, ArrowDown, ArrowRight } from '@element-plus/icons-vue';
-import type { SchemaObject, ReferenceObject } from '@shared/types';
-import { isReferenceObject, isArraySchemaObject } from '../utils/resolve';
+import type { SchemaObject, ReferenceObject, OpenApiDoc } from '@shared/types';
+import { isReferenceObject } from '../utils/resolve';
+import { useDocStore } from '../store/useDocStore';
+import { usePropertyRows } from '../composables/usePropertyRows';
 import SchemaViewer from './SchemaViewer.vue';
 
 const SCHEMA_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object'];
@@ -177,11 +179,14 @@ const SCHEMA_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object
 const props = defineProps<{
     schema: SchemaObject;
     level?: number;
+    /** Optional doc override; if omitted, falls back to useDocStore().doc */
+    doc?: OpenApiDoc;
 }>();
 
 const level = computed(() => props.level ?? 0);
-const expandedNames = reactive<Record<string, boolean>>({});
-const itemsExpanded = ref(false);
+const docStore = useDocStore();
+const effectiveDoc = computed(() => props.doc ?? docStore.doc as OpenApiDoc);
+
 const newEnumValue = ref('');
 
 // ── Combinator handling ───────────────────────────────────────────────────────
@@ -200,35 +205,11 @@ const supportsEnum = computed((): boolean => {
     return t === 'string' || t === 'number' || t === 'integer' || t === 'boolean';
 });
 
-// ── Property table ─────────────────────────────────────────────────────────────
-interface PropertyRow {
-    name: string;
-    schema: SchemaObject | ReferenceObject;
-    _origName: string;
-}
-
-const propertyRows = computed((): PropertyRow[] => {
-    const p: Record<string, SchemaObject | ReferenceObject> = (props.schema as any).properties ?? {};
-    return Object.keys(p).map((name) => ({ name, schema: p[name], _origName: name }));
-});
-
-const displayRows = computed(() => {
-    const result: any[] = [];
-    for (const row of propertyRows.value) {
-        result.push(row);
-        if (expandedNames[row.name]) {
-            result.push({ _expansion: true, name: row.name, schema: row.schema });
-        }
-    }
-    return result;
-});
-
-function spanMethod({ row, columnIndex }: any) {
-    if (row._expansion) {
-        return columnIndex === 0 ? [1, 6] : [0, 0];
-    }
-    return [1, 1];
-}
+// ── Property rows (via composable) ────────────────────────────────────────────
+const { expandedNames, displayRows, spanMethod, toggleExpanded, setExpanded } = usePropertyRows(
+    () => (props.schema as any).properties ?? {},
+    6,
+);
 
 function isRequired(name: string): boolean {
     return props.schema.required?.includes(name) ?? false;
@@ -257,9 +238,10 @@ function removeProperty(name: string) {
     if (props.schema.required) {
         props.schema.required = props.schema.required.filter((n) => n !== name);
     }
+    delete expandedNames[name];
 }
 
-function renameProperty(row: PropertyRow) {
+function renameProperty(row: { name: string; _origName: string; schema: SchemaObject | ReferenceObject }) {
     if (!(props.schema as any).properties) { return; }
     const newName = row.name.trim();
     const oldName = row._origName;
@@ -272,21 +254,32 @@ function renameProperty(row: PropertyRow) {
         const idx = props.schema.required.indexOf(oldName);
         if (idx !== -1) { props.schema.required[idx] = newName; }
     }
+    // move expanded state
+    if (expandedNames[oldName] !== undefined) {
+        expandedNames[newName] = expandedNames[oldName];
+        delete expandedNames[oldName];
+    }
 }
 
-function ensureItems(schema: SchemaObject): SchemaObject {
-    if (!isArraySchemaObject(schema)) { return { type: 'string' }; }
-    return schema.items as SchemaObject;
+/** Auto-expand property when type changes to 'object' or 'array' for a better UX */
+function onTypeChange(propName: string, newType: string) {
+    if (newType === 'object' || newType === 'array') {
+        setExpanded(propName, true);
+    }
+}
+
+function refShortName(schema: SchemaObject | ReferenceObject): string {
+    if (!isReferenceObject(schema)) { return ''; }
+    const parts = (schema as ReferenceObject).$ref.split('/');
+    return parts[parts.length - 1] ?? '$ref';
 }
 
 function initItems() {
     (props.schema as any).items = { type: 'string' };
-    itemsExpanded.value = true;
 }
 
 function removeItems() {
     (props.schema as any).items = undefined;
-    itemsExpanded.value = false;
 }
 
 // ── Enum editing ──────────────────────────────────────────────────────────────
@@ -339,36 +332,6 @@ function removeEnumValue(i: number) {
     align-items: center;
 }
 
-.items-section-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    padding: 4px 2px;
-    margin-top: 6px;
-    border-radius: 3px;
-    user-select: none;
-}
-
-.items-section-header:hover {
-    background: var(--vscode-list-hoverBackground, #f5f5f5);
-}
-
-.items-section-label {
-    font-size: 12px;
-    opacity: 0.8;
-}
-
-.items-body {
-    padding: 4px 0 4px 16px;
-    border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
-    margin-top: 4px;
-}
-
-.no-items {
-    padding: 8px 0 4px;
-}
-
 .array-items-wrapper {
     display: flex;
     align-items: stretch;
@@ -419,19 +382,6 @@ function removeEnumValue(i: number) {
     padding: 8px 8px 8px 16px;
     border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
     border-bottom: 1px solid var(--vscode-panel-border, #e4e7ed);
-}
-
-.prop-expansion-header {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 4px;
-}
-
-.prop-expansion-label {
-    font-size: 11px;
-    opacity: 0.6;
-    margin-bottom: 6px;
-    font-family: monospace;
 }
 
 .combo-section {

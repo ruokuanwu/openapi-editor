@@ -9,46 +9,63 @@
                     <span class="ref-block-name">{{ refName }}</span>
                     <span v-if="resolvedRefType" class="ref-block-type">{{ resolvedRefType }}</span>
                 </div>
-                <SchemaViewer :schema="resolvedRef" :level="lv + 1" />
+                <SchemaViewer :schema="resolvedRef" :level="lv + 1" :doc="effectiveDoc" />
+            </div>
+            <div v-else class="ref-unresolved">
+                <span class="ref-block-arrow">↳</span>
+                <span class="ref-unresolved-text">{{ refStr }}（无法解析）</span>
             </div>
         </template>
 
         <!-- ── object with properties ────────────────────────────────────── -->
         <template v-else-if="(s as any).type === 'object' || (s as any).properties">
-            <el-table :data="displayPropRows" border size="small" style="width:100%" :span-method="propSpanMethod">
+            <el-table :data="displayRows" border size="small" style="width:100%" :span-method="spanMethod">
                 <el-table-column label="属性名" min-width="130">
                     <template #default="{ row }">
-                        <div v-if="row._expansion" style="padding:8px 0 8px 32px;">
-                            <SchemaViewer :schema="row.schema" :level="lv + 1" />
+                        <div v-if="row._expansion" class="prop-expansion-block">
+                            <SchemaViewer :schema="row.schema" :level="lv + 1" :doc="effectiveDoc" />
                         </div>
-                        <span v-else class="ro-text">{{ row.name }}</span>
+                        <span v-else class="ro-text">
+                            {{ row.name }}
+                            <el-tag v-if="isRequired(row.name)" type="danger" size="small" class="required-tag">必填</el-tag>
+                        </span>
                     </template>
                 </el-table-column>
                 <el-table-column label="类型" width="110">
                     <template #default="{ row }">
-                        <span class="ro-text">{{ typeLabel(resolveSchema(_doc, row.schema)!) }}</span>
+                        <template v-if="!row._expansion">
+                            <el-tag v-if="isReferenceObject(row.schema)" size="small" type="info" class="ref-type-tag">
+                                {{ refShortName(row.schema) }}
+                            </el-tag>
+                            <span v-else class="ro-text">{{ typeLabel(row.schema) }}</span>
+                        </template>
                     </template>
                 </el-table-column>
                 <el-table-column label="格式" width="100">
                     <template #default="{ row }">
-                        <span class="ro-text">{{ (row.schema as any).format ?? '' }}</span>
+                        <span v-if="!row._expansion" class="ro-text">{{ (row.schema as any).format ?? '' }}</span>
                     </template>
                 </el-table-column>
                 <el-table-column label="必填" width="58" align="center">
                     <template #default="{ row }">
-                        <el-checkbox :model-value="isRequired(row.name)" disabled />
+                        <el-checkbox v-if="!row._expansion" :model-value="isRequired(row.name)" disabled />
                     </template>
                 </el-table-column>
                 <el-table-column label="描述" min-width="140">
                     <template #default="{ row }">
-                        <span class="ro-text">{{ (row.schema as any).description ?? '' }}</span>
+                        <template v-if="!row._expansion">
+                            <span v-if="isReferenceObject(row.schema)" class="ro-text ref-path">
+                                {{ (row.schema as ReferenceObject).$ref }}
+                            </span>
+                            <span v-else class="ro-text">{{ (row.schema as any).description ?? '' }}</span>
+                        </template>
                     </template>
                 </el-table-column>
                 <el-table-column label="" width="44" align="center">
                     <template #default="{ row }">
                         <el-button v-if="!row._expansion && isExpandable(row.schema)" size="small" text
                             :icon="expandedNames[row.name] ? ArrowDown : ArrowRight"
-                            @click="expandedNames[row.name] = !expandedNames[row.name]" />
+                            @click="toggleExpanded(row.name)" />
                     </template>
                 </el-table-column>
             </el-table>
@@ -56,8 +73,9 @@
 
         <!-- ── top-level array ───────────────────────────────────────────── -->
         <template v-else-if="(s as any).type === 'array'">
-            <SchemaViewer v-if="arrayItems" :schema="arrayItems" :level="lv + 1" />
-            <span v-else class="ro-text">未定义</span>
+            <div class="array-label">Array items:</div>
+            <SchemaViewer v-if="arrayItems" :schema="arrayItems" :level="lv + 1" :doc="effectiveDoc" />
+            <span v-else class="ro-text">（未定义 items）</span>
         </template>
 
         <!-- ── allOf / oneOf / anyOf ─────────────────────────────────────── -->
@@ -73,7 +91,7 @@
                 <div v-if="comboExpanded[key]" class="nested-block">
                     <div v-for="(item, i) in (s as any)[key]" :key="i" class="combo-item">
                         <el-tag size="small" style="margin-bottom:4px">{{ i + 1 }}</el-tag>
-                        <SchemaViewer :schema="item" :level="lv + 1" />
+                        <SchemaViewer :schema="item" :level="lv + 1" :doc="effectiveDoc" />
                     </div>
                 </div>
             </div>
@@ -92,8 +110,7 @@
                     <span class="ro-text">{{ (s as any).description }}</span>
                 </el-form-item>
                 <el-form-item v-if="(s as any).enum" label="枚举值" class="compact-item">
-                    <el-tag v-for="v in (s as any).enum" :key="String(v)" size="small" style="margin:2px">{{ v
-                    }}</el-tag>
+                    <el-tag v-for="v in (s as any).enum" :key="String(v)" size="small" style="margin:2px">{{ v }}</el-tag>
                 </el-form-item>
             </el-form>
         </template>
@@ -102,33 +119,38 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive } from 'vue';
 import { ArrowDown, ArrowRight } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
 import type { SchemaObject, ReferenceObject, OpenApiDoc } from '@shared/types';
-import { isReferenceObject, getObjectByRef, resolveSchema } from '../utils/resolve';
+import { isReferenceObject, getObjectByRef } from '../utils/resolve';
+import { usePropertyRows } from '../composables/usePropertyRows';
 
 const props = defineProps<{
     schema: SchemaObject | ReferenceObject;
     level?: number;
+    /** Optional doc override; if omitted, falls back to useDocStore().doc */
+    doc?: OpenApiDoc;
 }>();
 
 const lv = computed(() => props.level ?? 0);
 const docStore = useDocStore();
-const _doc = computed(() => docStore.doc as OpenApiDoc);
+const effectiveDoc = computed(() => props.doc ?? docStore.doc as OpenApiDoc);
 
-// ── $ref handling ────────────────────────────────────────────────────────────
+// ── $ref handling ─────────────────────────────────────────────────────────────
 const isRef = computed(() => isReferenceObject(props.schema));
 const refStr = computed(() => (props.schema as ReferenceObject).$ref ?? '');
-const refExpanded = ref(false);
+
 const resolvedRef = computed((): SchemaObject | ReferenceObject | null => {
     if (!isRef.value) { return null; }
-    try { return getObjectByRef(docStore.doc, refStr.value) as SchemaObject; } catch { return null; }
+    try { return getObjectByRef(effectiveDoc.value, refStr.value) as SchemaObject; } catch { return null; }
 });
+
 const refName = computed(() => {
     const parts = refStr.value.split('/');
     return parts[parts.length - 1] ?? refStr.value;
 });
+
 const resolvedRefType = computed((): string | null => {
     const r = resolvedRef.value as any;
     if (!r) { return null; }
@@ -138,35 +160,20 @@ const resolvedRefType = computed((): string | null => {
     return null;
 });
 
+function refShortName(schema: SchemaObject | ReferenceObject): string {
+    if (!isReferenceObject(schema)) { return ''; }
+    const parts = (schema as ReferenceObject).$ref.split('/');
+    return parts[parts.length - 1] ?? '$ref';
+}
+
 // Treat schema as non-ref SchemaObject for convenience
 const s = computed(() => props.schema as SchemaObject);
 
-// ── Property rows ─────────────────────────────────────────────────────────────
-interface PropEntry { name: string; schema: SchemaObject | ReferenceObject }
-const expandedNames = reactive<Record<string, boolean>>({});
-
-const propRows = computed((): PropEntry[] => {
-    const p: Record<string, SchemaObject | ReferenceObject> = (s.value as any).properties ?? {};
-    return Object.keys(p).map((name) => ({ name, schema: p[name] }));
-});
-
-const displayPropRows = computed(() => {
-    const result: any[] = [];
-    for (const row of propRows.value) {
-        result.push(row);
-        if (expandedNames[row.name]) {
-            result.push({ _expansion: true, schema: row.schema });
-        }
-    }
-    return result;
-});
-
-function propSpanMethod({ row, columnIndex }: any) {
-    if (row._expansion) {
-        return columnIndex === 0 ? [1, 6] : [0, 0];
-    }
-    return [1, 1];
-}
+// ── Property rows (via composable) ────────────────────────────────────────────
+const { expandedNames, displayRows, spanMethod, toggleExpanded } = usePropertyRows(
+    () => (s.value as any).properties ?? {},
+    6,
+);
 
 function isRequired(name: string): boolean {
     return (s.value as any).required?.includes(name) ?? false;
@@ -181,11 +188,15 @@ function isExpandable(schema: SchemaObject | ReferenceObject): boolean {
 
 function typeLabel(schema: SchemaObject | ReferenceObject): string {
     if (isReferenceObject(schema)) { return '$ref'; }
-    return String((schema as any).type ?? '');
+    const so = schema as any;
+    if (so.type === 'array' && so.items) {
+        const itemsType = isReferenceObject(so.items) ? refShortName(so.items) : (so.items as any).type;
+        return `array<${itemsType ?? '?'}>`;
+    }
+    return String(so.type ?? '');
 }
 
 // ── Array items ───────────────────────────────────────────────────────────────
-const itemsExpanded = ref(true);
 const arrayItems = computed((): SchemaObject | ReferenceObject | null => (s.value as any).items ?? null);
 
 // ── allOf / oneOf / anyOf ─────────────────────────────────────────────────────
@@ -200,26 +211,70 @@ const comboExpanded = reactive<Record<string, boolean>>({});
     font-size: 12px;
 }
 
-.ref-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 0;
-}
-
-.ref-tag {
-    font-family: monospace;
-}
-
-.ref-unresolved {
-    color: #e6a23c;
-    font-size: 12px;
-}
-
 .ro-text {
     font-size: 12px;
     padding: 0 4px;
     color: var(--vscode-foreground, #333);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.required-tag {
+    flex-shrink: 0;
+}
+
+.ref-type-tag {
+    font-family: monospace;
+}
+
+.ref-path {
+    font-family: monospace;
+    font-size: 11px;
+    opacity: 0.75;
+}
+
+.ref-block {
+    border: 1px solid var(--vscode-panel-border, #e4e7ed);
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: 4px;
+}
+
+.ref-block-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+
+.ref-block-arrow {
+    color: var(--vscode-textLink-foreground, #409eff);
+}
+
+.ref-block-name {
+    font-weight: 600;
+    font-family: monospace;
+}
+
+.ref-block-type {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 11px;
+}
+
+.ref-unresolved {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    color: #e6a23c;
+    font-size: 12px;
+}
+
+.ref-unresolved-text {
+    font-family: monospace;
+    font-size: 11px;
 }
 
 .leaf-form {
@@ -232,6 +287,17 @@ const comboExpanded = reactive<Record<string, boolean>>({});
 
 .compact-item {
     margin-bottom: 4px;
+}
+
+.array-label {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #888);
+    margin-bottom: 4px;
+}
+
+.prop-expansion-block {
+    padding: 8px 8px 8px 16px;
+    border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
 }
 
 .combo-section {
@@ -252,11 +318,6 @@ const comboExpanded = reactive<Record<string, boolean>>({});
     background: var(--vscode-list-hoverBackground, #f5f5f5);
 }
 
-.combo-label {
-    font-size: 12px;
-    opacity: 0.8;
-}
-
 .combo-count {
     font-size: 11px;
     opacity: 0.6;
@@ -267,42 +328,6 @@ const comboExpanded = reactive<Record<string, boolean>>({});
     padding: 4px 0 4px 16px;
     border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
     margin-top: 4px;
-}
-
-.ref-block {
-    padding: 4px 0 4px 12px;
-    border-left: 2px solid var(--vscode-panel-border, #e4e7ed);
-    margin-top: 4px;
-}
-
-.ref-block-label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    margin-bottom: 6px;
-    opacity: 0.5;
-    font-size: 11px;
-    line-height: 1;
-    user-select: none;
-}
-
-.ref-block-arrow {
-    font-size: 11px;
-    color: var(--vscode-descriptionForeground, #999);
-}
-
-.ref-block-name {
-    font-family: 'Consolas', 'Courier New', monospace;
-    color: var(--vscode-foreground, #555);
-    letter-spacing: 0.2px;
-}
-
-.ref-block-type {
-    background: var(--vscode-textCodeBlock-background, #f0f0f0);
-    padding: 1px 4px;
-    border-radius: 3px;
-    font-size: 10px;
-    color: var(--vscode-descriptionForeground, #888);
 }
 
 .combo-item {
