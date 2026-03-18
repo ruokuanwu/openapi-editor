@@ -1,14 +1,14 @@
 <template>
-    <template v-if="resolvedParameters.length">
+    <template v-if="availableParameters.length">
         <div class="section-header">
             <div class="section-bar" />
             <span class="section-title">参数</span>
         </div>
         <div class="table-wrap">
-            <el-table :data="resolvedParameters" stripe size="small" style="width: 100%">
+            <el-table :data="availableParameters" stripe size="small" style="width: 100%">
                 <el-table-column label="位置" width="80">
                     <template #default="{ row }">
-                        <el-tag size="small" :type="paramTagType(row.in)">{{ row.in }}</el-tag>
+                        <el-tag size="small">{{ row.in }}</el-tag>
                     </template>
                 </el-table-column>
                 <el-table-column label="名称" min-width="120">
@@ -46,30 +46,20 @@
 import { computed } from 'vue';
 import { Check } from '@element-plus/icons-vue';
 import { useDocStore } from '../store/useDocStore';
-import type { OperationObject } from '@shared/types';
-import { resolveParameter, resolveSchema } from '../utils/resolve';
+import type { ParameterObject } from '@shared/types';
+import { resolveSchema } from '../utils/resolve';
 import { omit } from '../utils/object';
 
 const props = defineProps<{
-    operation: OperationObject;
+    parameters?: ParameterObject[];
 }>();
 
 const docStore = useDocStore();
 const _doc = computed(() => docStore.doc);
 
-const resolvedParameters = computed(() =>
-    props.operation.parameters?.map(p => resolveParameter(_doc, p)).filter(p => p != null) ?? []
+const availableParameters = computed(() =>
+    props.parameters?.filter(p => p != null) ?? []
 );
-
-function paramTagType(loc: string): '' | 'success' | 'warning' | 'danger' | 'info' {
-    const map: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
-        path: 'danger',
-        query: '',
-        header: 'warning',
-        cookie: 'info',
-    };
-    return map[loc] ?? '';
-}
 </script>
 
 <style scoped>

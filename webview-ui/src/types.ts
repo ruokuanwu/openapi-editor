@@ -1,7 +1,7 @@
 // Shared type definitions – mirrors src/shared/types.ts in the extension host.
 
 import { OpenAPIV3_1 } from 'openapi-types';
-import { OperationObject, ParameterObject, SchemaObject, ResponseObject, RequestBodyObject, OpenApiDoc, NormalSchemaObjectType } from '@shared/types';
+import { OperationObject, ParameterObject, SchemaObject, ResponseObject, RequestBodyObject, OpenApiDoc, NormalSchemaObjectType, ReferenceObject } from '@shared/types';
 
 
 
@@ -51,7 +51,7 @@ export interface MediaTypeObject {
     example?: unknown;
 }
 
-export type ResponsesObject = Record<string, ResponseObject>;
+export type ResponsesObject = Record<string, ResponseObject | ReferenceObject>;
 
 
 export interface ComponentsObject {

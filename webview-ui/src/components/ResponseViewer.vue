@@ -1,5 +1,5 @@
 <template>
-    <template v-if="Object.keys(operation.responses ?? {}).length">
+    <template v-if="Object.keys(responses ?? {}).length">
         <div class="section-header">
             <div class="section-bar" />
             <span class="section-title">响应</span>
@@ -7,11 +7,11 @@
 
         <div class="responses-list">
             <el-collapse>
-                <el-collapse-item v-for="(resp, code) in operation.responses" :key="code" :name="code">
+                <el-collapse-item v-for="(resp, code) in responses" :key="code" :name="code">
                     <template #title>
                         <div class="response-title">
-                            <el-tag :type="statusTagType(String(code))" size="small" class="status-code">{{ code
-                                }}</el-tag>
+                            <el-tag type="info" size="small" class="status-code">{{ code
+                            }}</el-tag>
                             <span class="response-desc">{{ resp.description }}</span>
                         </div>
                     </template>
@@ -51,25 +51,17 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import { useDocStore } from '../store/useDocStore';
-import type { OperationObject } from '@shared/types';
+import type { ResponsesObject } from '@shared/types';
 import { generateMockData } from '../utils/mockGenerator';
 import SchemaViewer from './SchemaViewer.vue';
 import { resolveResponse } from '../utils/resolve';
 
 const props = defineProps<{
-    operation: OperationObject;
+    responses?: ResponsesObject | undefined;
 }>();
 
 const docStore = useDocStore();
 const _doc = computed(() => docStore.doc);
-
-function statusTagType(code: string): '' | 'success' | 'warning' | 'danger' | 'info' {
-    const n = parseInt(code);
-    if (n >= 500) { return 'danger'; }
-    if (n >= 400) { return 'warning'; }
-    if (n >= 200 && n < 300) { return 'success'; }
-    return 'info';
-}
 
 type ViewMode = 'visual' | 'json';
 const respModes = reactive<Record<string, ViewMode>>({});

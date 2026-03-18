@@ -3,11 +3,10 @@
         <div class="section-header">
             <div class="section-bar" />
             <span class="section-title">请求体</span>
-            <el-tag v-if="resolveRequestBody(_doc, operation.requestBody)?.required" size="small" type="danger"
-                class="section-tag">必填</el-tag>
+            <el-tag v-if="resolvedRequestBody?.required" size="small" type="danger" class="section-tag">必填</el-tag>
         </div>
-        <div v-if="operation.requestBody?.description" class="section-desc">
-            {{ operation.requestBody.description }}
+        <div v-if="resolvedRequestBody?.description" class="section-desc">
+            {{ resolvedRequestBody.description }}
         </div>
 
         <div v-for="ct in requestBodyContentTypes" :key="ct" class="content-type-block">
@@ -34,31 +33,28 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import { useDocStore } from '../store/useDocStore';
-import type { OperationObject, SchemaObject } from '@shared/types';
+import type { RequestBodyObject, SchemaObject } from '@shared/types';
 import { generateMockData } from '../utils/mockGenerator';
 import SchemaViewer from './SchemaViewer.vue';
-import { resolveRequestBody, resolveSchema } from '../utils/resolve';
+import { resolveSchema } from '../utils/resolve';
 
 const props = defineProps<{
-    operation: OperationObject;
+    requestBody: RequestBodyObject;
 }>();
 
 const docStore = useDocStore();
-const _doc = computed(() => docStore.doc);
 
-const resolvedRequestBody = computed(() => resolveRequestBody(_doc, props.operation.requestBody));
-
+const resolvedRequestBody = computed(() => props.requestBody);
 const hasRequestBody = computed(() => {
-    const rb = props.operation.requestBody;
-    return rb && Object.keys(resolveRequestBody(_doc, rb)?.content ?? {}).length > 0;
+    const rb = props.requestBody;
+    return rb && Object.keys(rb.content ?? {}).length > 0;
 });
-
 const requestBodyContentTypes = computed((): string[] =>
     Object.keys(resolvedRequestBody.value?.content ?? {})
 );
 
 function requestBodySchema(ct: string): SchemaObject | null {
-    return resolveSchema(_doc, resolveRequestBody(_doc, props.operation.requestBody)?.content?.[ct]?.schema) ?? null;
+    return resolveSchema(docStore.doc, resolvedRequestBody.value?.content?.[ct]?.schema) ?? null;
 }
 
 type ViewMode = 'visual' | 'json';

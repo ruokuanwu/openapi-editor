@@ -13,7 +13,7 @@
             <span v-if="operation.tags?.length" class="meta-badge-item">
                 <span class="meta-badge-label">Tags</span>
                 <el-tag v-for="tag in operation.tags" :key="tag" size="small" type="info" class="meta-tag">{{ tag
-                    }}</el-tag>
+                }}</el-tag>
             </span>
         </div>
         <div v-if="operation.description" class="meta-description">{{ operation.description }}</div>
@@ -21,11 +21,11 @@
 </template>
 
 <script setup lang="ts">
-import type { OperationObject } from '@shared/types';
+import { computed } from 'vue';
+import { useDocStore } from '../store/useDocStore';
 
-defineProps<{
-    operation: OperationObject;
-}>();
+const docStore = useDocStore();
+const operation = computed(() => docStore.selectedOperation!);
 </script>
 
 <style scoped>

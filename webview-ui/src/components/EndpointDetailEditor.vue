@@ -23,6 +23,7 @@
                 </el-dropdown>
             </div>
         </div>
+
         <el-tabs v-model="activeTab" class="editor-tabs">
             <el-tab-pane label="概览" name="overview">
                 <EndpointMetaEditor />
@@ -78,20 +79,6 @@ const responseCount = computed(() => Object.keys(operation.value?.responses ?? {
 const editPath = ref(docStore.selectedPath ?? '');
 const editMethod = ref<HttpMethod>((docStore.selectedMethod ?? 'get') as HttpMethod);
 
-const METHOD_COLORS: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
-    get: 'success',
-    post: '',
-    put: 'warning',
-    delete: 'danger',
-    patch: 'warning',
-    options: 'info',
-    head: 'info',
-    trace: 'info',
-};
-
-const methodTagType = computed((): '' | 'success' | 'warning' | 'danger' | 'info' =>
-    METHOD_COLORS[editMethod.value] ?? ''
-);
 
 function onMethodChange(newMethod: HttpMethod) {
     const oldPath = docStore.selectedPath;

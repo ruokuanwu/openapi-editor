@@ -22,10 +22,11 @@
         </div>
         <div v-if="operation" class="view-content">
             <div :key="viewKey">
-                <EndpointMetaViewer :operation="operation" />
-                <ParameterTableViewer :operation="operation" />
-                <RequestBodyViewer :operation="operation" />
-                <ResponseViewer :operation="operation" />
+                <EndpointMetaViewer />
+                <ParameterTableViewer
+                    :parameters="operation?.parameters?.map(p => resolveParameter(_doc, p)).filter(p => p != null)" />
+                <RequestBodyViewer :requestBody="resolveRequestBody(_doc, operation?.requestBody)!" />
+                <ResponseViewer :responses="operation?.responses" />
                 <div v-if="isEmpty" class="empty-hint">此接口暂无详细描述，点击上方「编辑」按钮添加信息。</div>
             </div>
         </div>
@@ -38,7 +39,7 @@ import { ElMessage } from 'element-plus';
 import { useDocStore } from '../store/useDocStore';
 import { useConfigStore } from '../store/useConfigStore';
 import { buildCurl, buildOpenapiJson } from '../utils/exportUtils';
-import { resolveRequestBody } from '../utils/resolve';
+import { resolveParameter, resolveRequestBody } from '../utils/resolve';
 import EndpointMetaViewer from './EndpointMetaViewer.vue';
 import ParameterTableViewer from './ParameterTableViewer.vue';
 import RequestBodyViewer from './RequestBodyViewer.vue';

@@ -12,7 +12,7 @@ export type ReferenceObject = OpenAPIV3_1.ReferenceObject;
 export type ParameterObject = OpenAPIV3_1.ParameterObject;
 export const NormalSchemaObjectTypes = ['boolean', 'string', 'number', 'integer'] as const;
 export type NormalSchemaObjectType = typeof NormalSchemaObjectTypes[number];
-
+export type ResponsesObject = OpenAPIV3_1.ResponsesObject;
 
 
 export interface InfoObject {
@@ -59,7 +59,7 @@ export interface MediaTypeObject {
     example?: unknown;
 }
 
-export type ResponsesObject = Record<string, ResponseObject>;
+
 
 
 export interface ComponentsObject {
