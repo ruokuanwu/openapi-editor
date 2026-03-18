@@ -79,47 +79,13 @@
                                 <el-option :label="body.contentType" :value="body.contentType" />
                             </template>
                         </el-select>
-
-                        <!-- Text / Form toggle -->
-                        <el-radio-group v-model="bodyEditorMode" size="small">
-                            <el-radio-button value="text">文本</el-radio-button>
-                            <el-radio-button value="form">表单</el-radio-button>
-                        </el-radio-group>
                     </div>
                 </div>
 
                 <!-- Text editor -->
-                <div v-if="bodyEditorMode === 'text'" class="ri-textarea-wrapper">
+                <div class="ri-textarea-wrapper">
                     <el-input v-model="body.textContent" type="textarea" :autosize="{ minRows: 6, maxRows: 20 }"
                         placeholder='{"key": "value"}' class="ri-textarea" />
-                </div>
-
-                <!-- Form editor -->
-                <div v-else class="ri-form-editor">
-                    <el-table :data="formRows" size="small" class="ri-form-table">
-                        <el-table-column label="字段" min-width="120">
-                            <template #default="{ row }">
-                                <el-input v-if="row.isCustom" v-model="row.key" size="small" placeholder="字段名"
-                                    @change="onFormKeyChange(row)" />
-                                <span v-else class="ri-param-name">{{ row.key }}</span>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="值" min-width="160">
-                            <template #default="{ row }">
-                                <el-input v-model="row.value" size="small" placeholder="字段值"
-                                    @change="onFormValueChange(row)" />
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="" width="40">
-                            <template #default="{ row }">
-                                <el-button v-if="row.isCustom" size="small" type="danger" text :icon="Delete"
-                                    @click="removeFormRow(row.key)" />
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                    <div class="ri-form-add">
-                        <el-button size="small" text :icon="Plus" @click="addFormRow">添加字段</el-button>
-                    </div>
                 </div>
             </div>
 
@@ -147,7 +113,7 @@ import { buildCurl } from '../utils/exportUtils';
 import vscode from '../vscode';
 import type { ParameterIn } from '../types';
 import { NormalSchemaObjectTypes } from '@shared/types';
-import { resolveRequestBody, resolveSchema } from '../utils/resolve';
+import { resolveRequestBody } from '../utils/resolve';
 
 /**
  * 参数位置类型定义
@@ -229,40 +195,6 @@ const params = computed(() => runStore.instanceParams);
 const body = computed(() => runStore.instanceBody);
 
 /**
- * 请求体编辑器模式（文本/表单）
- * 在模式切换时自动转换数据格式
- */
-const bodyEditorMode = computed({
-    get: () => runStore.bodyEditorMode,
-    set: (v) => {
-        // 文本和表单模式切换时的数据同步
-        if (v === 'form' && body.value) {
-            // 文本 → 表单：解析 JSON 并填充 formContent
-            try {
-                const parsed = JSON.parse(body.value.textContent);
-                if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-                    const fc: Record<string, string> = {};
-                    for (const [k, val] of Object.entries(parsed)) {
-                        fc[k] = typeof val === 'string' ? val : JSON.stringify(val);
-                    }
-                    body.value.formContent = fc;
-                }
-            } catch { /* 保持现有的 formContent */ }
-        } else if (v === 'text' && body.value) {
-            // 表单 → 文本：将 formContent 序列化为 JSON
-            const formObj: Record<string, unknown> = {};
-            for (const [k, val] of Object.entries(body.value.formContent)) {
-                try { formObj[k] = JSON.parse(val); } catch { formObj[k] = val; }
-            }
-            if (Object.keys(formObj).length > 0) {
-                body.value.textContent = JSON.stringify(formObj, null, 2);
-            }
-        }
-        runStore.bodyEditorMode = v;
-    },
-});
-
-/**
  * 可用的 Content-Type 列表（从 schema 定义和常用类型中获取）
  */
 const availableContentTypes = computed(() => {
@@ -272,93 +204,6 @@ const availableContentTypes = computed(() => {
     const combined = [...new Set([...ctFromOp, ...COMMON_CONTENT_TYPES])];
     return combined;
 });
-
-/**
- * Form 行数据的接口定义
- * 组合了 schema 定义的字段（isCustom=false）和用户添加的字段（isCustom=true）
- */
-interface FormRow { key: string; value: string; isCustom: boolean }
-
-/**
- * 从请求体 schema 中获取属性键集合
- */
-const schemaKeys = computed(() => {
-    const op = docStore.selectedOperation;
-    const requestBody = resolveRequestBody(_doc, op?.requestBody);
-    if (!body.value || !requestBody?.content) { return new Set<string>(); }
-    const media = requestBody.content[body.value.contentType]
-        ?? Object.values(requestBody.content)[0];
-    const schema = resolveSchema(_doc, media?.schema);
-    if (!schema?.properties) { return new Set<string>(); }
-    return new Set(Object.keys(schema.properties));
-});
-
-/**
- * 表单行数据计算属性
- * 合并 schema 定义的字段和自定义字段
- */
-const formRows = computed((): FormRow[] => {
-    if (!body.value) { return []; }
-    const rows: FormRow[] = [];
-    const fc = body.value.formContent;
-    const sk = schemaKeys.value;
-
-    // 先添加 schema 定义的字段
-    for (const key of sk) {
-        rows.push({ key, value: fc[key] ?? '', isCustom: false });
-    }
-    // 再添加自定义字段
-    for (const key of Object.keys(fc)) {
-        if (!sk.has(key)) {
-            rows.push({ key, value: fc[key], isCustom: true });
-        }
-    }
-    return rows;
-});
-
-/**
- * 处理表单字段值变化的函数
- * @param row - 被修改的表单行
- */
-function onFormValueChange(row: FormRow) {
-    if (body.value) {
-        body.value.formContent[row.key] = row.value;
-    }
-}
-
-/**
- * 处理表单字段名变化的函数
- * @param row - 被修改的表单行
- */
-function onFormKeyChange(row: FormRow) {
-    if (body.value && row.key) {
-        // Rename key in formContent
-        const fc = body.value.formContent;
-        const oldVal = fc['__new__'] ?? '';
-        delete fc['__new__'];
-        fc[row.key] = oldVal;
-    }
-}
-
-/**
- * 添加新的表单行
- */
-function addFormRow() {
-    if (body.value) {
-        const newKey = `field${Object.keys(body.value.formContent).length + 1}`;
-        body.value.formContent[newKey] = '';
-    }
-}
-
-/**
- * 删除指定的表单行
- * @param key - 要删除的字段名
- */
-function removeFormRow(key: string) {
-    if (body.value) {
-        delete body.value.formContent[key];
-    }
-}
 
 /**
  * 添加自定义参数到参数列表中
@@ -407,7 +252,7 @@ async function doSend() {
     const req = buildRunRequestFromInstance(
         runStore.instanceParams,
         runStore.instanceBody,
-        runStore.bodyEditorMode,
+        'text',
         p,
         m.toUpperCase(),
         configStore,
